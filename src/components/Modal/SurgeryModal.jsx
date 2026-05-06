@@ -94,7 +94,7 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
               className={`form-input ${errors.patient_name ? 'form-input--error' : ''}`}
               value={form.patient_name}
               onChange={e => set('patient_name', e.target.value)}
-              placeholder="Nguyễn Văn A"
+              placeholder=""
               autoFocus
             />
             {errors.patient_name && <span className="form-error">{errors.patient_name}</span>}
@@ -108,7 +108,7 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
               className={`form-input ${errors.diagnosis ? 'form-input--error' : ''}`}
               value={form.diagnosis}
               onChange={e => set('diagnosis', e.target.value)}
-              placeholder="Viêm ruột thừa cấp..."
+              placeholder=""
             />
             {errors.diagnosis && <span className="form-error">{errors.diagnosis}</span>}
           </div>
