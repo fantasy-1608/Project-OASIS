@@ -131,11 +131,11 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 /* Shift rows area — stacked vertically */
 .shift-rows-area { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
 
-.shift-row { display: flex; flex-direction: column; overflow: visible; min-height: 0; }
+.shift-row { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 .shift-row-header {
   padding: 10px 12px; border-bottom: 1px solid var(--border-subtle);
   display: flex; justify-content: space-between; align-items: center;
-  flex-shrink: 0; border-left: 3px solid transparent;
+  flex-shrink: 0;
 }
 .shift-row-title-group { display: flex; align-items: center; gap: 8px; }
 .shift-row-icon { font-size: 16px; }

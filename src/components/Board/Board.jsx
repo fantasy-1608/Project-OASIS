@@ -68,9 +68,9 @@ function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting,
   const emergencyCount = tasks.filter(t => t.priority === 'emergency').length;
 
   return (
-    <div className="shift-row glass-panel">
+    <div className="shift-row glass-panel" style={{ borderLeft: `3px solid ${meta.color}` }}>
       {/* Row Header */}
-      <div className="shift-row-header" style={{ borderLeftColor: meta.color }}>
+      <div className="shift-row-header">
         <div className="shift-row-title-group">
           <span className="shift-row-icon">{meta.icon}</span>
           <div>
