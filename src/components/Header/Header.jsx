@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Wifi, WifiOff, RefreshCw, Plus, CalendarDays } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronLeft, ChevronRight, Wifi, WifiOff, RefreshCw, Plus, CalendarDays, Lock, Unlock, LayoutDashboard, List, Search, Printer } from 'lucide-react';
 import { format, addDays, isToday, isYesterday, isTomorrow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -10,7 +10,7 @@ function formatDateLabel(date) {
   return format(date, 'dd/MM/yyyy');
 }
 
-export function Header({ currentDate, onDateChange, isOnline, onAddNew, onRefresh, totalCases, onOpenCalendar, onOpenHistory }) {
+export function Header({ currentDate, onDateChange, isOnline, onAddNew, onRefresh, totalCases, onOpenCalendar, onOpenHistory, isUnlocked, onToggleLock, searchQuery, onSearchChange, viewMode, onViewModeChange }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -69,6 +69,31 @@ export function Header({ currentDate, onDateChange, isOnline, onAddNew, onRefres
           <span className="cases-count-label">ca</span>
         </div>
 
+        <div className="search-box" style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', padding: '4px 8px', gap: '6px' }}>
+          <Search size={14} color="var(--text-muted)" />
+          <input 
+            type="text" 
+            placeholder="Tìm tên, mã BN..." 
+            value={searchQuery} 
+            onChange={e => onSearchChange(e.target.value)}
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none', width: '120px', fontSize: '12px' }}
+          />
+        </div>
+
+        {viewMode === 'table' && (
+          <button className="icon-btn" onClick={() => window.print()} title="In / Xuất PDF">
+            <Printer size={16} />
+          </button>
+        )}
+
+        <button className="icon-btn" onClick={() => onViewModeChange(viewMode === 'board' ? 'table' : 'board')} title={viewMode === 'board' ? 'Chế độ bảng' : 'Chế độ thẻ'}>
+          {viewMode === 'board' ? <List size={16} /> : <LayoutDashboard size={16} />}
+        </button>
+
+        <button className="icon-btn" onClick={onToggleLock} title={isUnlocked ? 'Đang mở khóa' : 'Đang khóa (Chỉ xem)'} style={{ color: isUnlocked ? '#10b981' : 'var(--text-muted)' }}>
+          {isUnlocked ? <Unlock size={16} /> : <Lock size={16} />}
+        </button>
+
         <button className="icon-btn" onClick={handleRefresh} title="Tải lại">
           <RefreshCw size={16} style={{ animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none' }} />
         </button>
@@ -81,10 +106,12 @@ export function Header({ currentDate, onDateChange, isOnline, onAddNew, onRefres
           <CalendarDays size={16} />
         </button>
 
-        <button className="btn-primary" onClick={() => onAddNew?.()}>
-          <Plus size={16} />
-          Thêm ca mổ
-        </button>
+        {isUnlocked && (
+          <button className="btn-primary" onClick={() => onAddNew?.()}>
+            <Plus size={16} />
+            Thêm ca mổ
+          </button>
+        )}
       </div>
     </header>
   );

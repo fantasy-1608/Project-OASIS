@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 import { SurgeryCard } from '../SurgeryCard/SurgeryCard';
 import { Plus } from 'lucide-react';
 
 // ── Waiting list column (vertical, left side) ──────────────────
-function WaitingColumn({ tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onSchedule, onMarkDone }) {
+function WaitingColumn({ tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onSchedule, onMarkStatus, isUnlocked }) {
   return (
     <div className="waiting-panel glass-panel">
       <div className="waiting-header">
@@ -29,7 +29,7 @@ function WaitingColumn({ tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onS
               </div>
             )}
             {tasks.map((task, index) => (
-              <Draggable key={task.id} draggableId={task.id} index={index}>
+              <Draggable key={task.id} draggableId={task.id} index={index} isDragDisabled={!isUnlocked}>
                 {(prov, snap) => (
                   <SurgeryCard
                     surgery={task}
@@ -37,7 +37,7 @@ function WaitingColumn({ tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onS
                     onEdit={onEdit}
                     onDelete={onDelete}
                     onMoveToWaiting={onMoveToWaiting}
-                    onSchedule={onSchedule} onMarkDone={onMarkDone}
+                    onSchedule={onSchedule} onMarkStatus={onMarkStatus}
                     provided={prov}
                     isDragging={snap.isDragging}
                     compact
@@ -50,9 +50,11 @@ function WaitingColumn({ tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onS
         )}
       </Droppable>
 
-      <button className="waiting-add-btn" onClick={() => onAddNew?.('waiting')}>
-        <Plus size={15} /> Thêm ca mổ
-      </button>
+      {isUnlocked && (
+        <button className="waiting-add-btn" onClick={() => onAddNew?.('waiting')}>
+          <Plus size={15} /> Thêm ca mổ
+        </button>
+      )}
     </div>
   );
 }
@@ -63,9 +65,10 @@ const SHIFT_META = {
   afternoon: { icon: '🌆', label: 'Ca Chiều', time: '13:30 – 17:00', color: '#d4a25a', bg: 'rgba(212,162,90,0.05)' },
 };
 
-function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onSchedule, onMarkDone }) {
+function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onSchedule, onMarkStatus, isUnlocked }) {
   const meta = SHIFT_META[shiftId];
   const emergencyCount = tasks.filter(t => t.priority === 'emergency').length;
+  const isOverload = tasks.length > 4;
 
   const [isWide, setIsWide] = useState(window.innerWidth >= 700);
 
@@ -76,13 +79,15 @@ function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting,
   }, []);
 
   return (
-    <div className="shift-row glass-panel" style={{ borderLeft: `3px solid ${meta.color}` }}>
+    <div className={`shift-row glass-panel ${isOverload ? 'shift-row--overload' : ''}`} style={{ borderLeft: `3px solid ${isOverload ? 'var(--error)' : meta.color}` }}>
       {/* Row Header */}
       <div className="shift-row-header">
         <div className="shift-row-title-group">
           <span className="shift-row-icon">{meta.icon}</span>
           <div>
-            <div className="shift-row-title" style={{ color: meta.color }}>{meta.label}</div>
+            <div className="shift-row-title" style={{ color: isOverload ? 'var(--error)' : 'inherit' }}>
+              {meta.label} {isOverload && <span style={{ fontSize: '12px', background: 'var(--error)', color: 'white', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>⚠️ Quá tải</span>}
+            </div>
             <div className="shift-row-time">{meta.time}</div>
           </div>
         </div>
@@ -90,10 +95,14 @@ function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting,
           {emergencyCount > 0 && (
             <span className="emergency-count-badge">{emergencyCount} cấp cứu</span>
           )}
-          <span className="column-count-badge">{tasks.length} ca</span>
-          <button className="column-add-btn" onClick={() => onAddNew?.(shiftId)} title="Thêm ca mổ">
-            <Plus size={13} />
-          </button>
+          <span className="column-count-badge" style={{ background: isOverload ? 'var(--error)' : '', color: isOverload ? 'white' : '' }}>
+            {tasks.length} ca
+          </span>
+          {isUnlocked && (
+            <button className="column-add-btn" onClick={() => onAddNew?.(shiftId)} title="Thêm ca mổ">
+              <Plus size={13} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -113,7 +122,7 @@ function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting,
               </div>
             )}
             {tasks.map((task, index) => (
-              <Draggable key={task.id} draggableId={task.id} index={index}>
+              <Draggable key={task.id} draggableId={task.id} index={index} isDragDisabled={!isUnlocked}>
                 {(prov, snap) => (
                   <SurgeryCard
                     surgery={task}
@@ -121,7 +130,7 @@ function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting,
                     onEdit={onEdit}
                     onDelete={onDelete}
                     onMoveToWaiting={onMoveToWaiting}
-                    onSchedule={onSchedule} onMarkDone={onMarkDone}
+                    onSchedule={onSchedule} onMarkStatus={onMarkStatus}
                     provided={prov}
                     isDragging={snap.isDragging}
                   />
@@ -137,28 +146,35 @@ function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting,
 }
 
 // ── Main Board ─────────────────────────────────────────────────
-export function Board({ boardState, onEdit, onDelete, onAddNew, onMoveToWaiting, onSchedule, onMarkDone }) {
-  const waitingTasks   = (boardState.columns['waiting']?.taskIds   || []).map(id => boardState.tasks[id]).filter(Boolean);
-  const morningTasks   = (boardState.columns['morning']?.taskIds   || []).map(id => boardState.tasks[id]).filter(Boolean);
+export function Board({ boardState, onEdit, onDelete, onAddNew, onMoveToWaiting, onSchedule, onMarkStatus, isUnlocked }) {
+  const waitingTasks = (boardState.columns['waiting']?.taskIds || []).map(id => boardState.tasks[id]).filter(Boolean);
+  const morningTasks = (boardState.columns['morning']?.taskIds || []).map(id => boardState.tasks[id]).filter(Boolean);
   const afternoonTasks = (boardState.columns['afternoon']?.taskIds || []).map(id => boardState.tasks[id]).filter(Boolean);
-
 
   return (
     <div className="board-layout">
-      {/* Left: Waiting list */}
-      <WaitingColumn
+      {/* Waiting Column */}
+      <WaitingColumn 
         tasks={waitingTasks}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        onAddNew={onAddNew}
-        onMoveToWaiting={onMoveToWaiting}
-        onSchedule={onSchedule} onMarkDone={onMarkDone}
+        onEdit={onEdit} onDelete={onDelete} onAddNew={onAddNew} 
+        onMoveToWaiting={onMoveToWaiting} onSchedule={onSchedule} onMarkStatus={onMarkStatus}
+        isUnlocked={isUnlocked}
       />
 
-      {/* Right: Morning + Afternoon rows */}
+      {/* Shifts */}
       <div className="shift-rows-area">
-        <ShiftRow shiftId="morning"   tasks={morningTasks}   onEdit={onEdit} onDelete={onDelete} onAddNew={onAddNew} onMoveToWaiting={onMoveToWaiting} onSchedule={onSchedule} onMarkDone={onMarkDone} />
-        <ShiftRow shiftId="afternoon" tasks={afternoonTasks} onEdit={onEdit} onDelete={onDelete} onAddNew={onAddNew} onMoveToWaiting={onMoveToWaiting} onSchedule={onSchedule} onMarkDone={onMarkDone} />
+        <ShiftRow 
+          shiftId="morning" tasks={morningTasks} 
+          onEdit={onEdit} onDelete={onDelete} onAddNew={onAddNew} 
+          onMoveToWaiting={onMoveToWaiting} onSchedule={onSchedule} onMarkStatus={onMarkStatus}
+          isUnlocked={isUnlocked}
+        />
+        <ShiftRow 
+          shiftId="afternoon" tasks={afternoonTasks} 
+          onEdit={onEdit} onDelete={onDelete} onAddNew={onAddNew} 
+          onMoveToWaiting={onMoveToWaiting} onSchedule={onSchedule} onMarkStatus={onMarkStatus}
+          isUnlocked={isUnlocked}
+        />
       </div>
     </div>
   );

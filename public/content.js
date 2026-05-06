@@ -3,6 +3,14 @@
 
 console.log('🧞 [OASIS] Content script loaded into HIS');
 
+// Inject the API bridge script into the page context
+const script = document.createElement('script');
+script.src = chrome.runtime.getURL('injected.js');
+script.onload = function() {
+    this.remove();
+};
+(document.head || document.documentElement).appendChild(script);
+
 let oasisCapacity = { morning: 0, afternoon: 0, date: '' };
 
 // Listen for messages from OASIS Background/SidePanel
@@ -90,6 +98,38 @@ function injectScheduleButtons() {
       if (fallbackMatch) chanDoan = fallbackMatch[1].trim();
     }
 
+    // Nâng cao: Thử tìm trực tiếp trên form nhập liệu (DOM) nếu đang ở màn hình có form
+    try {
+      // Tìm nhãn "Chẩn đoán" và lấy input/textarea gần nhất
+      const labels = Array.from(document.querySelectorAll('label, div, span'));
+      const cdLabel = labels.find(el => el.textContent && el.textContent.trim() === 'Chẩn đoán');
+      if (cdLabel) {
+        let nextEl = cdLabel.nextElementSibling;
+        if (!nextEl) nextEl = cdLabel.parentElement.nextElementSibling;
+        if (nextEl) {
+          const input = nextEl.querySelector('input, textarea') || (nextEl.tagName === 'INPUT' || nextEl.tagName === 'TEXTAREA' ? nextEl : null);
+          if (input && input.value) {
+            chanDoan = input.value.trim();
+          }
+        }
+      }
+
+      // Tìm nhãn "Bệnh kèm theo"
+      const bktLabel = labels.find(el => el.textContent && el.textContent.trim() === 'Bệnh kèm theo');
+      if (bktLabel) {
+        let nextEl = bktLabel.nextElementSibling;
+        if (!nextEl) nextEl = bktLabel.parentElement.nextElementSibling;
+        if (nextEl) {
+          const input = nextEl.querySelector('input, textarea') || (nextEl.tagName === 'INPUT' || nextEl.tagName === 'TEXTAREA' ? nextEl : null);
+          if (input && input.value && input.value.trim().length > 0) {
+            chanDoan += ' (Kèm theo: ' + input.value.trim() + ')';
+          }
+        }
+      }
+    } catch (e) {
+      console.log('[OASIS] Lỗi khi quét DOM tìm chẩn đoán:', e);
+    }
+
     // Create the OASIS button
     const btn = document.createElement('button');
     btn.className = 'oasis-schedule-btn';
@@ -129,43 +169,55 @@ function injectScheduleButtons() {
       }
 
       btn.innerHTML = '⏳ Đang lấy dữ liệu...';
-      let finalDiagnosis = chanDoan;
 
-      try {
-        const requestId = 'oasis_treat_' + Date.now();
-        const treatments = await new Promise(resolve => {
-          const handler = (ev) => {
-            if (ev.data && ev.data.type === 'FETCH_TREATMENT_RESULT' && ev.data.requestId === requestId) {
-              window.removeEventListener('message', handler);
-              resolve(ev.data.treatmentList || []);
+      // Tạo một Promise để chờ dữ liệu từ Injected Script
+      const fetchDiagnosisFromAPI = () => {
+        return new Promise((resolve) => {
+          const eventId = 'oasis_diag_' + Date.now();
+          
+          const listener = (event) => {
+            if (event.data && event.data.type === 'OASIS_RES_FETCH_DIAGNOSIS' && event.data.eventId === eventId) {
+              window.removeEventListener('message', listener);
+              resolve(event.data.data);
             }
           };
-          window.addEventListener('message', handler);
-          window.postMessage({
-            type: 'REQ_FETCH_TREATMENT',
-            rowId: maBA,
-            requestId: requestId,
-            token: ''
-          }, window.location.origin);
-          
-          setTimeout(() => {
-            window.removeEventListener('message', handler);
-            resolve([]);
-          }, 3000); // 3s timeout
-        });
+          window.addEventListener('message', listener);
 
-        if (treatments && treatments.length > 0) {
-          // Lấy tờ điều trị mới nhất (phần tử cuối cùng)
-          const latestTreatment = treatments[treatments.length - 1];
-          let cd = latestTreatment.CHANDOAN || latestTreatment.ChanDoan || '';
-          if (latestTreatment.CHANDOANKEMTHEO) cd += ' (' + latestTreatment.CHANDOANKEMTHEO + ')';
-          
-          if (cd && cd.length > 5) {
-             finalDiagnosis = cd;
-          }
+          window.postMessage({
+             type: 'OASIS_REQ_FETCH_DIAGNOSIS',
+             eventId: eventId,
+             maBA: maBA
+          }, window.location.origin);
+
+          // Timeout sau 3s nếu có lỗi
+          setTimeout(() => resolve({ cd: '', bkt: '' }), 3000);
+        });
+      };
+
+      const apiData = await fetchDiagnosisFromAPI();
+      
+      let finalDiagnosis = chanDoan;
+      if (apiData && apiData.cd) {
+        if (chanDoan.includes(apiData.cd.trim()) && chanDoan.length > apiData.cd.length) {
+            // Giữ lại bản đầy đủ từ DOM, nhưng loại bỏ phần "(Kèm theo: ...)" nếu có để tránh trùng lặp
+            finalDiagnosis = chanDoan.replace(/\s*\(Kèm theo:.*?\)/, '').trim();
+        } else {
+            finalDiagnosis = apiData.cd.trim();
         }
-      } catch (err) {
-         console.error('[OASIS] Error fetching treatments:', err);
+        
+        let bkt = apiData.bkt ? apiData.bkt.trim() : '';
+        
+        // Nếu API không trả về bệnh kèm theo nhưng DOM lại quét được, sử dụng của DOM
+        if (!bkt && chanDoan.includes('(Kèm theo:')) {
+           const match = chanDoan.match(/\(Kèm theo:\s*(.*?)\)/);
+           if (match) bkt = match[1].trim();
+        }
+
+        if (bkt) {
+          // Xóa dấu chấm phẩy thừa nếu có ở đầu bkt
+          bkt = bkt.replace(/^;+\s*/, '');
+          finalDiagnosis += '; ' + bkt;
+        }
       }
 
       btn.innerHTML = originalText;
@@ -173,7 +225,7 @@ function injectScheduleButtons() {
       const payload = {
         patient_id: maBA,
         patient_name: hoTen,
-        diagnosis: finalDiagnosis !== 'Đang chờ cập nhật' ? finalDiagnosis : chanDoan,
+        diagnosis: finalDiagnosis,
         admission_date: ngayNhapVien || null,
         priority: isSurgical ? 'urgent' : 'elective'
       };

@@ -221,7 +221,7 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 
 .header-brand { display: flex; align-items: center; gap: 8px; }
 .brand-genie { font-size: 22px; filter: drop-shadow(0 0 8px rgba(212,162,90,0.5)); }
-.brand-name { font-size: 14px; font-weight: 700; background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1.2; }
+.brand-name { font-size: 14px; font-weight: 700; background: var(--accent-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; line-height: 1.2; }
 .brand-oasis { font-weight: 400; }
 .brand-sub { font-size: 9px; color: var(--text-muted); letter-spacing: 0.05em; }
 
@@ -435,7 +435,7 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 
 /* ===================== SIMPLIFIED CARD ELEMENTS ===================== */
 .card-patient-name { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; line-height: 1.3; }
-.card-diagnosis { font-size: 12px; color: var(--text-secondary); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-diagnosis { font-size: 12px; color: var(--text-secondary); line-height: 1.45; margin-bottom: 6px; }
 
 /* Card info tags (surgical method, admission date) */
 .card-info-tags { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
@@ -464,6 +464,7 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
   transition: box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease, opacity 0.2s ease;
   position: relative; overflow: hidden;
   will-change: transform;
+  flex-shrink: 0;
 }
 .surgery-card:hover {
   border-color: rgba(212,162,90,0.35);
@@ -507,7 +508,7 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 .card-age { font-size: 11px; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 0 5px; border-radius: 4px; }
 .card-gender { font-size: 12px; color: var(--text-muted); }
 .priority-badge { font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 4px; display: flex; align-items: center; letter-spacing: 0.05em; }
-.card-procedure { font-size: 12px; color: var(--accent-muted); margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.card-procedure { font-size: 12px; color: var(--accent-muted); margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .card-footer { display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px dashed var(--border-subtle); padding-top: 8px; margin-bottom: 6px; gap: 8px; }
 .card-footer-left { display: flex; flex-direction: column; gap: 3px; }
 .card-surgeon { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--accent-primary); }
@@ -637,3 +638,72 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 }
 .cal-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
 .cal-legend-hint { margin-left: auto; font-size: 11px; color: var(--text-muted); font-style: italic; }
+
+/* ===================== PRINT STYLES ===================== */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  /* Ẩn các thành phần không cần in */
+  .app-header,
+  .search-box,
+  .waiting-panel,
+  .sand-particle,
+  .btn-primary,
+  .icon-btn {
+    display: none !important;
+  }
+  
+  .app-root {
+    background: white !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  
+  .app-body {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  
+  /* Style lại Table View cho nền trắng chữ đen */
+  .glass-panel {
+    background: transparent !important;
+    border: none !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+  }
+  
+  table {
+    border: 1px solid #ddd !important;
+    background: white !important;
+  }
+  
+  tr {
+    background: transparent !important;
+    border-bottom: 1px solid #ddd !important;
+  }
+  
+  th {
+    background: #f5f5f5 !important;
+    color: black !important;
+    border: 1px solid #ddd !important;
+  }
+  
+  td {
+    background: transparent !important;
+    color: black !important;
+    border: 1px solid #ddd !important;
+    font-weight: normal !important;
+  }
+  
+  /* Đổi màu chữ cho dễ đọc khi in */
+  *, *::before, *::after {
+    color: black !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+}

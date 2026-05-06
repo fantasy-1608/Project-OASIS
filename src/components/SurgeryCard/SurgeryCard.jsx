@@ -11,7 +11,7 @@ const PRIORITY_CONFIG = {
 
 const SHIFT_LABELS = { morning: '🌅 Ca Sáng', afternoon: '🌆 Ca Chiều', waiting: '🕐 Chờ' };
 
-export function SurgeryCard({ surgery, index, onEdit, onDelete, onMoveToWaiting, onSchedule, onMarkDone, provided, isDragging }) {
+export function SurgeryCard({ surgery, index, onEdit, onDelete, onMoveToWaiting, onSchedule, onMarkStatus, provided, isDragging, compact }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const priority = PRIORITY_CONFIG[surgery.priority] || PRIORITY_CONFIG.elective;
@@ -29,12 +29,17 @@ export function SurgeryCard({ surgery, index, onEdit, onDelete, onMoveToWaiting,
     onMoveToWaiting?.(surgery.id);
   }, [surgery.id, onMoveToWaiting]);
 
-  const handleMarkDone = useCallback((e) => {
+  const handleMarkStatus = useCallback((e, status) => {
     e.stopPropagation();
-    if (window.confirm(`Xác nhận ${surgery.patient_name} đã mổ xong? Ca này sẽ được xóa khỏi lịch.`)) {
-      onMarkDone?.(surgery.id);
+    let msg = '';
+    if (status === 'completed') msg = `Xác nhận ${surgery.patient_name} đã mổ xong?`;
+    if (status === 'postponed') msg = `Xác nhận HOÃN ca mổ của ${surgery.patient_name}?`;
+    if (status === 'cancelled') msg = `Xác nhận HỦY ca mổ của ${surgery.patient_name}?`;
+    
+    if (window.confirm(msg)) {
+      onMarkStatus?.(surgery.id, status);
     }
-  }, [surgery.id, surgery.patient_name, onMarkDone]);
+  }, [surgery.id, surgery.patient_name, onMarkStatus]);
 
   const handleSchedule = useCallback((e, shift, date) => {
     e.stopPropagation();
@@ -117,7 +122,7 @@ export function SurgeryCard({ surgery, index, onEdit, onDelete, onMoveToWaiting,
       )}
 
       {/* Expanded: Actions */}
-      {isExpanded && (
+      {isExpanded && onEdit && (
         <div className="card-expanded-actions">
           {/* Quick action buttons */}
           <div className="card-actions-row">
@@ -131,11 +136,17 @@ export function SurgeryCard({ surgery, index, onEdit, onDelete, onMoveToWaiting,
               <CalendarDays size={12} /> Xếp lịch
             </button>
             {!isWaiting && (
-              <button className="card-btn card-btn--done" onClick={handleMarkDone}>
+              <button className="card-btn card-btn--done" onClick={(e) => handleMarkStatus(e, 'completed')}>
                 <CheckCircle size={12} /> Đã mổ
               </button>
             )}
-            <button className="card-btn card-btn--delete" onClick={handleDelete}>🗑️</button>
+          </div>
+          
+          {/* Extra Actions Row */}
+          <div className="card-actions-row" style={{ marginTop: '4px' }}>
+            <button className="card-btn" style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.1)' }} onClick={(e) => handleMarkStatus(e, 'postponed')}>⏸️ Hoãn mổ</button>
+            <button className="card-btn" style={{ color: 'var(--error)', background: 'rgba(239,68,68,0.1)' }} onClick={(e) => handleMarkStatus(e, 'cancelled')}>🚫 Hủy ca</button>
+            <button className="card-btn card-btn--delete" onClick={handleDelete} style={{ marginLeft: 'auto' }}>🗑️ Xóa cứng</button>
           </div>
 
           {/* Date picker dropdown */}

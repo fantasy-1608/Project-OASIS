@@ -4,13 +4,13 @@ import { format, addDays } from 'date-fns';
 
 const DEFAULT_FORM = {
   patient_name: '',
+  patient_id: '',
   diagnosis: '',
   surgical_method: '',
   priority: 'elective',
   shift: 'morning',
   date: format(new Date(), 'yyyy-MM-dd'),
   // Các field ẩn — giữ giá trị mặc định để không lỗi DB
-  patient_id: '',
   status: 'scheduled',
   order_in_shift: 999,
 };
@@ -98,6 +98,18 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
               autoFocus
             />
             {errors.patient_name && <span className="form-error">{errors.patient_name}</span>}
+          </div>
+
+          {/* Mã bệnh nhân */}
+          <div className="form-field">
+            <label>Mã bệnh nhân / Mã BA</label>
+            <input
+              type="text"
+              className="form-input"
+              value={form.patient_id || ''}
+              onChange={e => set('patient_id', e.target.value)}
+              placeholder="VD: 24012345"
+            />
           </div>
 
           {/* Chẩn đoán */}

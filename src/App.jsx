@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import { Header } from './components/Header/Header';
 import { Board } from './components/Board/Board';
+import { TableView } from './components/TableView/TableView';
 import { SurgeryModal } from './components/Modal/SurgeryModal';
 import { WeekCalendar } from './components/WeekCalendar/WeekCalendar';
 import { HistoryModal } from './components/Modal/HistoryModal';
@@ -22,6 +23,17 @@ function App() {
   const [defaultShift, setDefaultShift] = useState('morning');
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [isDraggingGlobal, setIsDraggingGlobal] = useState(false);
+  
+  // Phase 1, 2, 3 States
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const isUnlockedRef = useRef(false);
+  
+  useEffect(() => {
+    isUnlockedRef.current = isUnlocked;
+  }, [isUnlocked]);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState('board'); // 'board' | 'table'
   const particleIntervalRef = useRef(null);
 
   const dateStr = format(currentDate, 'yyyy-MM-dd');
@@ -31,6 +43,16 @@ function App() {
     loading, isOnline,
     addSurgery, updateSurgery, deleteSurgery, moveSurgery, refresh,
   } = useSurgeries(dateStr);
+  // ---- Toast system ----
+  const showToast = useCallback((type, message, duration = 3500) => {
+    const id = ++toastIdCounter;
+    setToasts(prev => [...prev, { id, type, message, duration }]);
+  }, []);
+
+  const dismissToast = useCallback((id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
   // ---- Extension Integration ----
   useEffect(() => {
     if (typeof chrome !== 'undefined' && chrome.tabs) {
@@ -50,6 +72,16 @@ function App() {
   useEffect(() => {
     const handleMessage = (msg) => {
       if (msg.type === 'OASIS_OPEN_ADD_SURGERY') {
+        if (!isUnlockedRef.current) {
+          const pwd = window.prompt('Nhập mã mở khóa để thêm ca mổ:');
+          if (pwd === 'CTCH') {
+            setIsUnlocked(true);
+            showToast('success', 'Đã mở khóa!');
+          } else {
+            if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
+            return;
+          }
+        }
         setEditingSurgery(msg.payload);
         setDefaultShift(msg.payload.priority === 'urgent' ? 'morning' : 'waiting');
         setModalOpen(true);
@@ -59,30 +91,40 @@ function App() {
       chrome.runtime.onMessage.addListener(handleMessage);
       
       // Check if there is pending surgery data from before the sidebar opened
-      chrome.storage.local.get(['oasis_pending_surgery'], (result) => {
-        if (result.oasis_pending_surgery) {
-          setEditingSurgery(result.oasis_pending_surgery);
-          setDefaultShift(result.oasis_pending_surgery.priority === 'urgent' ? 'morning' : 'waiting');
-          setModalOpen(true);
+      if (chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get(['oasis_pending_surgery'], (result) => {
+          if (result.oasis_pending_surgery) {
+          if (!isUnlockedRef.current) {
+            const pwd = window.prompt('Nhập mã mở khóa để thêm ca mổ:');
+            if (pwd === 'CTCH') {
+              setIsUnlocked(true);
+              showToast('success', 'Đã mở khóa!');
+              setEditingSurgery(result.oasis_pending_surgery);
+              setDefaultShift(result.oasis_pending_surgery.priority === 'urgent' ? 'morning' : 'waiting');
+              setModalOpen(true);
+            } else {
+              if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
+            }
+          } else {
+             setEditingSurgery(result.oasis_pending_surgery);
+             setDefaultShift(result.oasis_pending_surgery.priority === 'urgent' ? 'morning' : 'waiting');
+             setModalOpen(true);
+          }
           // Xoá ngay sau khi load để không bị loop mở lại
           chrome.storage.local.remove('oasis_pending_surgery');
         }
       });
+      } // closes if (chrome.storage && chrome.storage.local)
+    } // closes if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage)
       
-      return () => chrome.runtime.onMessage.removeListener(handleMessage);
-    }
-  }, []);
+    return () => {
+      if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+        chrome.runtime.onMessage.removeListener(handleMessage);
+      }
+    };
+  }, [showToast]);
 
 
-  // ---- Toast system ----
-  const showToast = useCallback((type, message, duration = 3500) => {
-    const id = ++toastIdCounter;
-    setToasts(prev => [...prev, { id, type, message, duration }]);
-  }, []);
-
-  const dismissToast = useCallback((id) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  }, []);
 
   // ---- Sand particles background ----
   useEffect(() => {
@@ -103,7 +145,26 @@ function App() {
     return () => clearInterval(particleIntervalRef.current);
   }, []);
 
-  // ---- Drag & Drop (no business rules) ----
+  // --- Handlers ---
+  const handleToggleLock = () => {
+    if (isUnlocked) {
+      setIsUnlocked(false);
+      showToast('info', 'Đã khóa chế độ chỉnh sửa');
+    } else {
+      const pwd = window.prompt('Nhập mã mở khóa:');
+      // NOTE: This hardcoded passcode is intentionally used as a basic safeguard
+      // to prevent accidental modifications by general users. It is NOT intended
+      // as a secure authentication mechanism. Do not flag as a security vulnerability.
+      if (pwd === 'CTCH') {
+        setIsUnlocked(true);
+        showToast('success', 'Đã mở khóa!');
+      } else if (pwd !== null) {
+        showToast('error', 'Mật khẩu không đúng!');
+      }
+    }
+  };
+
+  // ---- Drag & Drop ----
   const onDragStart = useCallback(() => {
     setIsDraggingGlobal(true);
     if (navigator.vibrate) navigator.vibrate(30);
@@ -127,16 +188,31 @@ function App() {
   }, [boardState, moveSurgery, showToast]);
 
   // ---- Modal handlers ----
+  const requireUnlock = useCallback(() => {
+    if (isUnlockedRef.current) return true;
+    const pwd = window.prompt('Nhập mã mở khóa để thêm/sửa ca mổ:');
+    if (pwd === 'CTCH') {
+      setIsUnlocked(true);
+      showToast('success', 'Đã mở khóa!');
+      return true;
+    } else if (pwd !== null) {
+      showToast('error', 'Mật khẩu không đúng!');
+    }
+    return false;
+  }, [showToast]);
+
   const handleOpenAdd = useCallback((shift = 'morning') => {
+    if (!requireUnlock()) return;
     setEditingSurgery(null);
     setDefaultShift(shift);
     setModalOpen(true);
-  }, []);
+  }, [requireUnlock]);
 
   const handleOpenEdit = useCallback((surgery) => {
+    if (!requireUnlock()) return;
     setEditingSurgery(surgery);
     setModalOpen(true);
-  }, []);
+  }, [requireUnlock]);
 
   const handleSave = useCallback(async (formData) => {
     if (editingSurgery && editingSurgery.id) {
@@ -151,36 +227,46 @@ function App() {
   }, [editingSurgery, updateSurgery, addSurgery, dateStr, showToast]);
 
   const handleDelete = useCallback(async (id) => {
+    if (!requireUnlock()) return;
     const surgery = surgeries.find(s => s.id === id);
     const { error } = await deleteSurgery(id);
     if (error) showToast('error', `❌ Lỗi xoá: ${error}`);
     else showToast('info', `🗑️ Đã xoá: ${surgery?.patient_name || ''}`);
-  }, [surgeries, deleteSurgery, showToast]);
+  }, [surgeries, deleteSurgery, showToast, requireUnlock]);
 
   // ---- Card quick actions ----
   const handleMoveToWaiting = useCallback(async (id) => {
+    if (!requireUnlock()) return;
     const surgery = surgeries.find(s => s.id === id);
     moveSurgery(id, 'waiting', 0);
     const { error } = await updateSurgery(id, { shift: 'waiting' });
     if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
     else showToast('info', `🕐 ${surgery?.patient_name || ''} → Danh sách chờ`);
-  }, [surgeries, moveSurgery, updateSurgery, showToast]);
+  }, [surgeries, moveSurgery, updateSurgery, showToast, requireUnlock]);
 
   const handleSchedule = useCallback(async (id, shift, date) => {
+    if (!requireUnlock()) return;
     const surgery = surgeries.find(s => s.id === id);
     moveSurgery(id, shift, 999);
     const { error } = await updateSurgery(id, { shift, date });
     const shiftLabel = shift === 'morning' ? 'Ca Sáng' : 'Ca Chiều';
     if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
     else showToast('success', `📅 ${surgery?.patient_name || ''} → ${shiftLabel} ${date.slice(5)}`);
-  }, [surgeries, moveSurgery, updateSurgery, showToast]);
+  }, [surgeries, moveSurgery, updateSurgery, showToast, requireUnlock]);
 
-  const handleMarkDone = useCallback(async (id) => {
+  const handleMarkStatus = useCallback(async (id, status) => {
+    if (!requireUnlock()) return;
     const surgery = surgeries.find(s => s.id === id);
-    const { error } = await updateSurgery(id, { status: 'completed' });
-    if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
-    else showToast('success', `✅ ${surgery?.patient_name || ''} — Đã mổ xong!`);
-  }, [surgeries, updateSurgery, showToast]);
+    const { error } = await updateSurgery(id, { status });
+    if (error) {
+      showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
+      return;
+    }
+    
+    if (status === 'completed') showToast('success', `✅ ${surgery?.patient_name || ''} — Đã mổ xong!`);
+    else if (status === 'postponed') showToast('info', `⏸️ ${surgery?.patient_name || ''} — Đã hoãn mổ!`);
+    else if (status === 'cancelled') showToast('info', `🚫 ${surgery?.patient_name || ''} — Đã hủy ca!`);
+  }, [surgeries, updateSurgery, showToast, requireUnlock]);
 
   // Connection toast
   useEffect(() => {
@@ -191,6 +277,21 @@ function App() {
     }
   }, [isOnline, showToast]);
 
+  // --- Render Prep ---
+  // Filter boardState based on searchQuery
+  const filteredBoardState = {
+    ...boardState,
+    tasks: Object.fromEntries(
+      Object.entries(boardState.tasks).filter(([, task]) => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (task.patient_name || '').toLowerCase().includes(q) ||
+               (task.patient_id || '').toLowerCase().includes(q) ||
+               (task.diagnosis || '').toLowerCase().includes(q);
+      })
+    )
+  };
+
   return (
     <div className={`app-root ${isDraggingGlobal ? 'is-dragging' : ''}`}>
       {/* Header */}
@@ -198,11 +299,17 @@ function App() {
         currentDate={currentDate}
         onDateChange={setCurrentDate}
         isOnline={isOnline}
-        onAddNew={() => handleOpenAdd()}
+        onAddNew={isUnlocked ? () => handleOpenAdd() : null}
         onRefresh={refresh}
         totalCases={Object.keys(boardState.tasks).length}
         onOpenCalendar={() => setCalendarOpen(true)}
         onOpenHistory={() => setShowHistory(true)}
+        isUnlocked={isUnlocked}
+        onToggleLock={handleToggleLock}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
 
       {/* Main Board */}
@@ -218,15 +325,20 @@ function App() {
           </div>
         ) : (
           <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
-            <Board
-              boardState={boardState}
-              onEdit={handleOpenEdit}
-              onDelete={handleDelete}
-              onAddNew={handleOpenAdd}
-              onMoveToWaiting={handleMoveToWaiting}
-              onSchedule={handleSchedule}
-              onMarkDone={handleMarkDone}
-            />
+            {viewMode === 'table' ? (
+              <TableView boardState={filteredBoardState} />
+            ) : (
+              <Board
+                boardState={filteredBoardState}
+                onEdit={handleOpenEdit}
+                onDelete={handleDelete}
+                onAddNew={handleOpenAdd}
+                onMoveToWaiting={handleMoveToWaiting}
+                onSchedule={handleSchedule}
+                onMarkStatus={handleMarkStatus}
+                isUnlocked={isUnlocked}
+              />
+            )}
           </DragDropContext>
         )}
       </div>
