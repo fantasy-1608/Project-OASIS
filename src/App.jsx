@@ -173,6 +173,13 @@ function App() {
     else showToast('success', `📅 ${surgery?.patient_name || ''} → ${shiftLabel} ${date.slice(5)}`);
   }, [surgeries, moveSurgery, updateSurgery, showToast]);
 
+  const handleMarkDone = useCallback(async (id) => {
+    const surgery = surgeries.find(s => s.id === id);
+    const { error } = await deleteSurgery(id);
+    if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
+    else showToast('success', `✅ ${surgery?.patient_name || ''} — Đã mổ xong!`);
+  }, [surgeries, deleteSurgery, showToast]);
+
   // Connection toast
   useEffect(() => {
     if (!isOnline) {
@@ -215,6 +222,7 @@ function App() {
               onAddNew={handleOpenAdd}
               onMoveToWaiting={handleMoveToWaiting}
               onSchedule={handleSchedule}
+              onMarkDone={handleMarkDone}
             />
           </DragDropContext>
         )}

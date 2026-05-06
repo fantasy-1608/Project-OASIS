@@ -121,7 +121,7 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
               className="form-input"
               value={form.surgical_method || ''}
               onChange={e => set('surgical_method', e.target.value)}
-              placeholder="Cắt ruột thừa qua nội soi..."
+              placeholder=""
             />
           </div>
 
@@ -132,8 +132,8 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
               type="text"
               className="form-input"
               value={form.admission_date || ''}
-              onChange={e => set('admission_date', e.target.value)}
-              placeholder="dd/mm/yyyy (tự lấy từ HIS)"
+              readOnly
+              style={{ opacity: 0.7, cursor: 'default' }}
             />
           </div>
 

@@ -1,6 +1,6 @@
 /* global chrome */
 import { useState, useCallback } from 'react';
-import { ChevronRight, CalendarDays, Clock } from 'lucide-react';
+import { ChevronRight, CalendarDays, Clock, CheckCircle } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 
 const PRIORITY_CONFIG = {
@@ -11,7 +11,7 @@ const PRIORITY_CONFIG = {
 
 const SHIFT_LABELS = { morning: '🌅 Ca Sáng', afternoon: '🌆 Ca Chiều', waiting: '🕐 Chờ' };
 
-export function SurgeryCard({ surgery, index, onEdit, onDelete, onMoveToWaiting, onSchedule, provided, isDragging }) {
+export function SurgeryCard({ surgery, index, onEdit, onDelete, onMoveToWaiting, onSchedule, onMarkDone, provided, isDragging }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const priority = PRIORITY_CONFIG[surgery.priority] || PRIORITY_CONFIG.elective;
@@ -28,6 +28,13 @@ export function SurgeryCard({ surgery, index, onEdit, onDelete, onMoveToWaiting,
     e.stopPropagation();
     onMoveToWaiting?.(surgery.id);
   }, [surgery.id, onMoveToWaiting]);
+
+  const handleMarkDone = useCallback((e) => {
+    e.stopPropagation();
+    if (window.confirm(`Xác nhận ${surgery.patient_name} đã mổ xong? Ca này sẽ được xóa khỏi lịch.`)) {
+      onMarkDone?.(surgery.id);
+    }
+  }, [surgery.id, surgery.patient_name, onMarkDone]);
 
   const handleSchedule = useCallback((e, shift, date) => {
     e.stopPropagation();
@@ -123,6 +130,11 @@ export function SurgeryCard({ surgery, index, onEdit, onDelete, onMoveToWaiting,
             <button className="card-btn card-btn--schedule" onClick={toggleDatePicker}>
               <CalendarDays size={12} /> Xếp lịch
             </button>
+            {!isWaiting && (
+              <button className="card-btn card-btn--done" onClick={handleMarkDone}>
+                <CheckCircle size={12} /> Đã mổ
+              </button>
+            )}
             <button className="card-btn card-btn--delete" onClick={handleDelete}>🗑️</button>
           </div>
 

@@ -3,6 +3,55 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { MOCK_SURGERIES, buildInitialBoardState } from '../lib/mockData';
 import { encryptSurgery, decryptSurgery, encryptData } from '../lib/crypto';
 
+// ---- Pack/Unpack extra fields into DB `notes` column ----
+// DB chưa có cột surgical_method, admission_date → pack vào notes dưới dạng JSON
+const EXTRA_FIELDS = ['surgical_method', 'admission_date'];
+
+function packExtras(surgery) {
+  const extras = {};
+  let hasExtras = false;
+  for (const key of EXTRA_FIELDS) {
+    if (surgery[key]) { extras[key] = surgery[key]; hasExtras = true; }
+  }
+  const packed = { ...surgery };
+  if (hasExtras) {
+    packed.notes = JSON.stringify(extras);
+  }
+  // Loại bỏ các field chưa có trên DB
+  for (const key of EXTRA_FIELDS) delete packed[key];
+  return packed;
+}
+
+function unpackExtras(surgery) {
+  const unpacked = { ...surgery };
+  if (unpacked.notes) {
+    try {
+      const extras = JSON.parse(unpacked.notes);
+      for (const key of EXTRA_FIELDS) {
+        if (extras[key]) unpacked[key] = extras[key];
+      }
+    } catch {
+      // notes không phải JSON (dữ liệu cũ) → giữ nguyên
+    }
+  }
+  return unpacked;
+}
+
+// Các cột được xác nhận tồn tại trên Supabase
+const KNOWN_DB_COLUMNS = [
+  'id', 'patient_name', 'diagnosis', 'priority', 'shift', 'date',
+  'patient_id', 'status', 'order_in_shift', 'surgeon_id', 'room_id',
+  'notes', 'created_at', 'updated_at',
+];
+
+function stripUnknownColumns(obj) {
+  const clean = {};
+  for (const key of Object.keys(obj)) {
+    if (KNOWN_DB_COLUMNS.includes(key)) clean[key] = obj[key];
+  }
+  return clean;
+}
+
 export function useSurgeries(date) {
   const [surgeries, setSurgeries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,7 +71,7 @@ export function useSurgeries(date) {
         .select('*')
         .order('order_in_shift', { ascending: true });
       if (error) throw error;
-      setSurgeries((data || []).map(decryptSurgery));
+      setSurgeries((data || []).map(d => unpackExtras(decryptSurgery(d))));
     } catch {
       setSurgeries(MOCK_SURGERIES.map(decryptSurgery));
     } finally {
@@ -42,21 +91,6 @@ export function useSurgeries(date) {
     return () => supabase.removeChannel(channel);
   }, [fetchSurgeries]);
 
-  // Các cột được xác nhận tồn tại trên Supabase. surgical_method sẽ thêm sau.
-  const KNOWN_DB_COLUMNS = [
-    'id', 'patient_name', 'diagnosis', 'priority', 'shift', 'date',
-    'patient_id', 'status', 'order_in_shift', 'surgeon_id', 'room_id',
-    'created_at', 'updated_at',
-  ];
-
-  const stripUnknownColumns = (obj) => {
-    const clean = {};
-    for (const key of Object.keys(obj)) {
-      if (KNOWN_DB_COLUMNS.includes(key)) clean[key] = obj[key];
-    }
-    return clean;
-  };
-
   const addSurgery = useCallback(async (surgery) => {
     const newSurgery = {
       ...surgery,
@@ -68,10 +102,12 @@ export function useSurgeries(date) {
       setSurgeries(prev => [...prev, newSurgery]);
       return { data: newSurgery, error: null };
     }
-    const dbSurgery = stripUnknownColumns(newSurgery);
+    // Pack extras → strip → encrypt → send
+    const packed = packExtras(newSurgery);
+    const dbSurgery = stripUnknownColumns(packed);
     const encryptedSurgery = encryptSurgery(dbSurgery);
     const { data, error } = await supabase.from('surgeries').insert([encryptedSurgery]).select().single();
-    if (!error) setSurgeries(prev => [...prev, decryptSurgery(data)]);
+    if (!error) setSurgeries(prev => [...prev, unpackExtras(decryptSurgery(data))]);
     return { data, error };
   }, [date]);
 
@@ -80,16 +116,30 @@ export function useSurgeries(date) {
       setSurgeries(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
       return { error: null };
     }
-    const dbUpdates = stripUnknownColumns(updates);
-    const encryptedUpdates = { ...dbUpdates };
-    if (encryptedUpdates.patient_name) encryptedUpdates.patient_name = encryptData(encryptedUpdates.patient_name);
-    if (encryptedUpdates.diagnosis) encryptedUpdates.diagnosis = encryptData(encryptedUpdates.diagnosis);
-    if (encryptedUpdates.patient_id) encryptedUpdates.patient_id = encryptData(encryptedUpdates.patient_id);
+    // Merge current surgery data với updates trước khi pack
+    const currentSurgery = surgeries.find(s => s.id === id);
+    const merged = { ...currentSurgery, ...updates };
 
-    const { error } = await supabase.from('surgeries').update(encryptedUpdates).eq('id', id);
+    // Pack extras vào notes
+    const packed = packExtras(merged);
+
+    // Chỉ gửi các field thay đổi + notes (vì notes chứa extras)
+    const toSend = {};
+    for (const key of Object.keys(updates)) {
+      if (KNOWN_DB_COLUMNS.includes(key)) toSend[key] = packed[key];
+    }
+    // Luôn gửi notes vì extras có thể đã thay đổi
+    toSend.notes = packed.notes || null;
+
+    // Encrypt sensitive fields
+    if (toSend.patient_name) toSend.patient_name = encryptData(toSend.patient_name);
+    if (toSend.diagnosis) toSend.diagnosis = encryptData(toSend.diagnosis);
+    if (toSend.patient_id) toSend.patient_id = encryptData(toSend.patient_id);
+
+    const { error } = await supabase.from('surgeries').update(toSend).eq('id', id);
     if (!error) setSurgeries(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
     return { error };
-  }, []);
+  }, [surgeries]);
 
   const deleteSurgery = useCallback(async (id) => {
     if (!isSupabaseConfigured) {

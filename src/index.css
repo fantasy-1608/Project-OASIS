@@ -477,6 +477,8 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 .card-btn--waiting:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
 .card-btn--schedule { color: var(--accent-primary); background: rgba(212,162,90,0.06); border-color: rgba(212,162,90,0.2); }
 .card-btn--schedule:hover { background: rgba(212,162,90,0.15); }
+.card-btn--done { color: #22c55e; background: rgba(34,197,94,0.06); border-color: rgba(34,197,94,0.2); }
+.card-btn--done:hover { background: rgba(34,197,94,0.15); border-color: #22c55e; }
 
 /* Expanded actions container */
 .card-expanded-actions {

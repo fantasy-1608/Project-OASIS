@@ -4,7 +4,7 @@ import { SurgeryCard } from '../SurgeryCard/SurgeryCard';
 import { Plus } from 'lucide-react';
 
 // ── Waiting list column (vertical, left side) ──────────────────
-function WaitingColumn({ tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onSchedule }) {
+function WaitingColumn({ tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onSchedule, onMarkDone }) {
   return (
     <div className="waiting-panel glass-panel">
       <div className="waiting-header">
@@ -37,7 +37,7 @@ function WaitingColumn({ tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onS
                     onEdit={onEdit}
                     onDelete={onDelete}
                     onMoveToWaiting={onMoveToWaiting}
-                    onSchedule={onSchedule}
+                    onSchedule={onSchedule} onMarkDone={onMarkDone}
                     provided={prov}
                     isDragging={snap.isDragging}
                     compact
@@ -63,7 +63,7 @@ const SHIFT_META = {
   afternoon: { icon: '🌆', label: 'Ca Chiều', time: '13:30 – 17:00', color: '#d4a25a', bg: 'rgba(212,162,90,0.05)' },
 };
 
-function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onSchedule }) {
+function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onSchedule, onMarkDone }) {
   const meta = SHIFT_META[shiftId];
   const emergencyCount = tasks.filter(t => t.priority === 'emergency').length;
 
@@ -113,7 +113,7 @@ function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting,
                     onEdit={onEdit}
                     onDelete={onDelete}
                     onMoveToWaiting={onMoveToWaiting}
-                    onSchedule={onSchedule}
+                    onSchedule={onSchedule} onMarkDone={onMarkDone}
                     provided={prov}
                     isDragging={snap.isDragging}
                   />
@@ -129,7 +129,7 @@ function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting,
 }
 
 // ── Main Board ─────────────────────────────────────────────────
-export function Board({ boardState, onEdit, onDelete, onAddNew, onMoveToWaiting, onSchedule }) {
+export function Board({ boardState, onEdit, onDelete, onAddNew, onMoveToWaiting, onSchedule, onMarkDone }) {
   const waitingTasks   = (boardState.columns['waiting']?.taskIds   || []).map(id => boardState.tasks[id]).filter(Boolean);
   const morningTasks   = (boardState.columns['morning']?.taskIds   || []).map(id => boardState.tasks[id]).filter(Boolean);
   const afternoonTasks = (boardState.columns['afternoon']?.taskIds || []).map(id => boardState.tasks[id]).filter(Boolean);
@@ -144,13 +144,13 @@ export function Board({ boardState, onEdit, onDelete, onAddNew, onMoveToWaiting,
         onDelete={onDelete}
         onAddNew={onAddNew}
         onMoveToWaiting={onMoveToWaiting}
-        onSchedule={onSchedule}
+        onSchedule={onSchedule} onMarkDone={onMarkDone}
       />
 
       {/* Right: Morning + Afternoon rows */}
       <div className="shift-rows-area">
-        <ShiftRow shiftId="morning"   tasks={morningTasks}   onEdit={onEdit} onDelete={onDelete} onAddNew={onAddNew} onMoveToWaiting={onMoveToWaiting} onSchedule={onSchedule} />
-        <ShiftRow shiftId="afternoon" tasks={afternoonTasks} onEdit={onEdit} onDelete={onDelete} onAddNew={onAddNew} onMoveToWaiting={onMoveToWaiting} onSchedule={onSchedule} />
+        <ShiftRow shiftId="morning"   tasks={morningTasks}   onEdit={onEdit} onDelete={onDelete} onAddNew={onAddNew} onMoveToWaiting={onMoveToWaiting} onSchedule={onSchedule} onMarkDone={onMarkDone} />
+        <ShiftRow shiftId="afternoon" tasks={afternoonTasks} onEdit={onEdit} onDelete={onDelete} onAddNew={onAddNew} onMoveToWaiting={onMoveToWaiting} onSchedule={onSchedule} onMarkDone={onMarkDone} />
       </div>
     </div>
   );
