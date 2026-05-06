@@ -63,13 +63,19 @@ function injectScheduleButtons() {
       maxDepth--;
     }
 
-    let maBA = '', hoTen = '', chanDoan = 'Đang chờ cập nhật';
+    let maBA = '', hoTen = '', chanDoan = 'Đang chờ cập nhật', ngayNhapVien = '';
 
     // Regex trích xuất Mã BA và Họ tên (Vd: "2605050953 | VÕ THỊ LANG |")
     const nameMatch = bannerText.match(/(?:^|\n)\s*(\d{8,12})\s*\|\s*([^|]+)\s*\|/);
     if (nameMatch) {
       maBA = nameMatch[1].trim();
       hoTen = nameMatch[2].trim();
+    }
+
+    // Regex trích xuất ngày nhập viện (Vd: "| 30/04/2026 20:00:00 |")
+    const admDateMatch = bannerText.match(/\|\s*(\d{2}\/\d{2}\/\d{4})\s+\d{2}:\d{2}:\d{2}\s*\|/);
+    if (admDateMatch) {
+      ngayNhapVien = admDateMatch[1]; // "30/04/2026"
     }
 
     // Regex trích xuất Chẩn đoán (Nằm sau cụm ngày tháng giờ, trước thẻ BHYT hoặc cuối chuỗi)
@@ -168,6 +174,7 @@ function injectScheduleButtons() {
         patient_id: maBA,
         patient_name: hoTen,
         diagnosis: finalDiagnosis !== 'Đang chờ cập nhật' ? finalDiagnosis : chanDoan,
+        admission_date: ngayNhapVien || null,
         priority: isSurgical ? 'urgent' : 'elective'
       };
 

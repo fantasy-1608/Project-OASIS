@@ -41,6 +41,10 @@ export function encryptSurgery(surgery) {
   if ('surgical_method' in surgery) {
     result.surgical_method = encryptData(surgery.surgical_method);
   }
+  // admission_date: không mã hoá (ngày tháng, không nhạy cảm)
+  if ('admission_date' in surgery) {
+    result.admission_date = surgery.admission_date;
+  }
   return result;
 }
 
@@ -57,6 +61,10 @@ export function decryptSurgery(surgery) {
   // surgical_method: chỉ giải mã nếu cột tồn tại
   if ('surgical_method' in surgery) {
     result.surgical_method = decryptData(surgery.surgical_method);
+  }
+  // admission_date: passthrough
+  if ('admission_date' in surgery) {
+    result.admission_date = surgery.admission_date;
   }
   return result;
 }

@@ -91,10 +91,21 @@ export function SurgeryCard({ surgery, index, onEdit, onDelete, onMoveToWaiting,
       {/* Diagnosis */}
       <div className="card-diagnosis">{surgery.diagnosis}</div>
 
-      {/* Phương pháp mổ */}
-      {surgery.surgical_method && (
-        <div className="card-diagnosis" style={{ marginTop: '4px', color: 'var(--accent-muted)' }}>
-          <span style={{opacity: 0.7}}>PP Mổ:</span> {surgery.surgical_method}
+      {/* Info tags: PP Mổ + Ngày nhập viện */}
+      {(surgery.surgical_method || surgery.admission_date) && (
+        <div className="card-info-tags">
+          {surgery.surgical_method && (
+            <div className="card-info-tag card-info-tag--method">
+              <span className="card-info-tag-icon">🔪</span>
+              <span>{surgery.surgical_method}</span>
+            </div>
+          )}
+          {surgery.admission_date && (
+            <div className="card-info-tag card-info-tag--date">
+              <span className="card-info-tag-icon">🏥</span>
+              <span>Nhập viện: {surgery.admission_date}</span>
+            </div>
+          )}
         </div>
       )}
 

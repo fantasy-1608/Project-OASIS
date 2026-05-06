@@ -125,6 +125,18 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
             />
           </div>
 
+          {/* Ngày nhập viện */}
+          <div className="form-field">
+            <label>Ngày nhập viện</label>
+            <input
+              type="text"
+              className="form-input"
+              value={form.admission_date || ''}
+              onChange={e => set('admission_date', e.target.value)}
+              placeholder="dd/mm/yyyy (tự lấy từ HIS)"
+            />
+          </div>
+
           {/* Ưu tiên */}
           <div className="form-field">
             <label>Mức độ ưu tiên</label>
