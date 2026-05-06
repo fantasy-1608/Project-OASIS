@@ -14,8 +14,8 @@
           
           var selRow = grid.jqGrid('getGridParam', 'selrow');
           var rowData = selRow ? grid.jqGrid('getRowData', selRow) : {};
-          var benhnhanId = rowData.BENHNHANID || '';
-          var khambenhId = rowData.HOSOBENHANID || rowData.TIEPNHANID || rowData.KHAMBENHID || rowData.MADIEUTRI || maBA;
+          var benhnhanId = rowData.BENHNHANID || window.$('#BENHNHANID').val() || window.benhnhanId || '';
+          var khambenhId = rowData.HOSOBENHANID || rowData.TIEPNHANID || rowData.KHAMBENHID || rowData.MADIEUTRI || window.$('#KHAMBENHID').val() || window.$('#HOSOBENHANID').val() || maBA;
 
           if (khambenhId) {
             // Fallback chẩn đoán từ grid (hữu ích cho ngoại trú hoặc nếu chưa có tờ điều trị)

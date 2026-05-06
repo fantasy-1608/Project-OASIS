@@ -103,7 +103,7 @@ function injectScheduleButtons() {
     try {
       // Tìm nhãn "Chẩn đoán" và lấy input/textarea gần nhất
       const labels = Array.from(document.querySelectorAll('label, div, span'));
-      const cdLabel = labels.find(el => el.textContent && el.textContent.trim().match(/^Chẩn đoán/i));
+      const cdLabel = labels.find(el => el.textContent && el.textContent.trim().match(/^(Chẩn đoán|Chẩn đoán chính)\s*:?$/i));
       if (cdLabel) {
         let nextEl = cdLabel.nextElementSibling;
         if (!nextEl) nextEl = cdLabel.parentElement.nextElementSibling;
@@ -199,7 +199,15 @@ function injectScheduleButtons() {
       
       let finalDiagnosis = chanDoan;
       if (apiData && apiData.cd) {
-        if (chanDoan.includes(apiData.cd.trim()) && chanDoan.length > apiData.cd.length) {
+        let icdRegex = /[A-Z]\d{2,3}(?:\.\d{1,2})?/;
+        let domIcd = chanDoan.match(icdRegex);
+        let apiIcd = apiData.cd.match(icdRegex);
+        
+        if (domIcd && apiIcd && domIcd[0] !== apiIcd[0]) {
+            // Khác mã ICD! Nghĩa là DOM (chưa lưu) đang chứa chẩn đoán mới, còn API trả về dữ liệu cũ.
+            // Ta sẽ tin tưởng DOM hơn cho chẩn đoán chính.
+            finalDiagnosis = chanDoan.replace(/\s*\(Kèm theo:.*?\)/, '').trim();
+        } else if (chanDoan.includes(apiData.cd.trim()) && chanDoan.length > apiData.cd.length) {
             // Giữ lại bản đầy đủ từ DOM, nhưng loại bỏ phần "(Kèm theo: ...)" nếu có để tránh trùng lặp
             finalDiagnosis = chanDoan.replace(/\s*\(Kèm theo:.*?\)/, '').trim();
         } else {
