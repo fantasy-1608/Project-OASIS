@@ -1,16 +1,14 @@
-import React, { useMemo } from 'react';
-import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { useMemo } from 'react';
 import { X, RotateCcw, Trash2, History } from 'lucide-react';
 
 export function HistoryModal({ isOpen, onClose, surgeries, onRestore, onDelete }) {
-  if (!isOpen) return null;
-
   const archived = useMemo(() => {
     return (surgeries || [])
       .filter(s => ['completed', 'postponed', 'cancelled'].includes(s.status))
       .sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [surgeries]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="cal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>

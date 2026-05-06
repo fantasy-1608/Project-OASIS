@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { format, startOfWeek, addDays, isSameDay, isToday } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X } from 'lucide-react';
 
 const PRIORITY_DOT = {
   emergency: '#ef4444',
@@ -16,8 +16,6 @@ const PRIORITY_LABEL = {
 };
 
 export function WeekCalendar({ isOpen, onClose, currentDate, onSelectDate, allSurgeries }) {
-  if (!isOpen) return null;
-
   // Week start = Monday
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -31,6 +29,8 @@ export function WeekCalendar({ isOpen, onClose, currentDate, onSelectDate, allSu
     });
     return map;
   }, [allSurgeries]);
+
+  if (!isOpen) return null;
 
   const DAY_NAMES = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 

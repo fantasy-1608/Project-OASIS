@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 
@@ -26,19 +26,24 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
   const isEdit = !!initialData?.id;
 
   useEffect(() => {
-    if (isOpen) {
-      if (initialData) {
-        setForm({ ...DEFAULT_FORM, ...initialData });
-      } else {
-        setForm({
-          ...DEFAULT_FORM,
-          shift: defaultShift || 'morning',
-          date: currentDate || format(new Date(), 'yyyy-MM-dd'),
-          patient_id: generatePatientId(),
-        });
+    let isMounted = true;
+    Promise.resolve().then(() => {
+      if (!isMounted) return;
+      if (isOpen) {
+        if (initialData) {
+          setForm({ ...DEFAULT_FORM, ...initialData });
+        } else {
+          setForm({
+            ...DEFAULT_FORM,
+            shift: defaultShift || 'morning',
+            date: currentDate || format(new Date(), 'yyyy-MM-dd'),
+            patient_id: generatePatientId(),
+          });
+        }
+        setErrors({});
       }
-      setErrors({});
-    }
+    });
+    return () => { isMounted = false; };
   }, [isOpen, initialData, defaultShift, currentDate]);
 
   if (!isOpen) return null;

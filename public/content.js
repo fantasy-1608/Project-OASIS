@@ -26,7 +26,9 @@ chrome.runtime.onMessage.addListener((msg) => {
     // VNPT HIS typically has a global search input or specific form inputs for Mã BA.
     // Thường ô nhập mã bệnh án có id/name liên quan đến 'maBenhAn'
     const searchInput = document.querySelector('input[name*="maBenhAn"], input[id*="maBenhAn"], input[placeholder*="Mã bệnh án"]');
-    const searchBtn = document.querySelector('button[id*="btnSearch"], button:contains("Tìm kiếm")') || document.querySelector('.btn-primary');
+    const searchBtn = document.querySelector('button[id*="btnSearch"]') ||
+      Array.from(document.querySelectorAll('button')).find(btn => btn.textContent.includes('Tìm kiếm')) ||
+      document.querySelector('.btn-primary');
     
     if (searchInput) {
       searchInput.value = maBA;
@@ -44,6 +46,62 @@ chrome.runtime.onMessage.addListener((msg) => {
   }
 });
 
+function normalizeText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function extractHisPatientData(anchorNode) {
+  let currentEl = anchorNode;
+  let bannerText = currentEl ? currentEl.innerText : '';
+  let maxDepth = 15;
+  while (currentEl && currentEl !== document.body && maxDepth > 0) {
+    if (currentEl.innerText && currentEl.innerText.includes('|') && currentEl.innerText.length > 50) {
+      bannerText = currentEl.innerText;
+      if (bannerText.match(/(?:^|\n)\s*(\d{8,12})\s*\|/)) break;
+    }
+    currentEl = currentEl.parentElement;
+    maxDepth--;
+  }
+
+  let maBA = '', hoTen = '', chanDoan = 'Đang chờ cập nhật', benhKemTheo = '', ngayNhapVien = '';
+
+  const nameMatch = bannerText.match(/(?:^|\n)\s*(\d{8,12})\s*\|\s*([^|]+)\s*\|/);
+  if (nameMatch) {
+    maBA = nameMatch[1].trim();
+    hoTen = nameMatch[2].trim();
+  }
+
+  const admDateMatch = bannerText.match(/\|\s*(\d{1,4}[/-]\d{1,2}[/-]\d{1,4})\s+\d{1,2}:\d{2}:\d{2}\s*\|/);
+  if (admDateMatch) {
+    ngayNhapVien = admDateMatch[1];
+  }
+
+  const diagMatch = bannerText.match(/\|\s*\d{1,4}[/-]\d{1,2}[/-]\d{1,4}\s+\d{1,2}:\d{2}:\d{2}\s*\|\s*([^|]+?)(?:\s*\||\s*$|\n)/);
+  if (diagMatch) {
+    chanDoan = diagMatch[1].trim();
+  } else {
+    const fallbackMatch = bannerText.match(/\|\s*([A-Z]\d{2}(?:\.\d+)?\s*-\s*[^|]+?)(?:\s*\||\s*$|\n)/);
+    if (fallbackMatch) chanDoan = fallbackMatch[1].trim();
+  }
+
+  return { maBA, hoTen, chanDoan, benhKemTheo, ngayNhapVien };
+}
+
+function appendUniqueParts(base, additions) {
+  const parts = String(base || '').split(';').map(part => normalizeText(part)).filter(Boolean);
+  additions.flatMap(value => String(value || '').split(';')).forEach(value => {
+    const item = normalizeText(value).replace(/^;+\s*/, '');
+    if (!item) return;
+    const exists = parts.some(existing => {
+      const a = existing.toLowerCase();
+      const b = item.toLowerCase();
+      return a === b || a.includes(b) || b.includes(a);
+    });
+    if (!exists) parts.push(item);
+  });
+  return parts.join('; ');
+}
+
 // Inject "Lên lịch mổ" (Schedule Surgery) button into HIS UI
 function injectScheduleButtons() {
   // Tìm element chứa chữ "Loại bệnh án:" trong vùng banner Hành chính
@@ -59,77 +117,7 @@ function injectScheduleButtons() {
     if (parentNode && parentNode.querySelector('.oasis-schedule-btn')) return;
     if (matchingElement.querySelector('.oasis-schedule-btn')) return;
 
-    // Lấy text toàn bộ khu vực banner để trích xuất thông tin
-    let currentEl = parentNode;
-    let bannerText = currentEl ? currentEl.innerText : '';
-    let maxDepth = 15;
-    while (currentEl && currentEl !== document.body && maxDepth > 0) {
-      if (currentEl.innerText && currentEl.innerText.includes('|') && currentEl.innerText.length > 50) {
-        bannerText = currentEl.innerText;
-        if (bannerText.match(/(?:^|\n)\s*(\d{8,12})\s*\|/)) break; // Found the level with the patient ID
-      }
-      currentEl = currentEl.parentElement;
-      maxDepth--;
-    }
-
-    let maBA = '', hoTen = '', chanDoan = 'Đang chờ cập nhật', ngayNhapVien = '';
-
-    // Regex trích xuất Mã BA và Họ tên (Vd: "2605050953 | VÕ THỊ LANG |")
-    const nameMatch = bannerText.match(/(?:^|\n)\s*(\d{8,12})\s*\|\s*([^|]+)\s*\|/);
-    if (nameMatch) {
-      maBA = nameMatch[1].trim();
-      hoTen = nameMatch[2].trim();
-    }
-
-    // Regex trích xuất ngày nhập viện (Vd: "| 30/04/2026 20:00:00 |")
-    const admDateMatch = bannerText.match(/\|\s*(\d{1,4}[/-]\d{1,2}[/-]\d{1,4})\s+\d{1,2}:\d{2}:\d{2}\s*\|/);
-    if (admDateMatch) {
-      ngayNhapVien = admDateMatch[1]; // "30/04/2026"
-    }
-
-    // Regex trích xuất Chẩn đoán (Nằm sau cụm ngày tháng giờ, trước thẻ BHYT hoặc cuối chuỗi)
-    // Vd: "| 05/05/2026 14:15:00 | S42.2 - Gãy phần trên xương cánh tay Phải | GD4828723281350"
-    // Vd: "| 05/05/2026 14:15:00 | S42.2 - Gãy phần trên xương cánh tay Phải"
-    const diagMatch = bannerText.match(/\|\s*\d{1,4}[/-]\d{1,2}[/-]\d{1,4}\s+\d{1,2}:\d{2}:\d{2}\s*\|\s*([^|]+?)(?:\s*\||\s*$|\n)/);
-    if (diagMatch) {
-      chanDoan = diagMatch[1].trim();
-    } else {
-      // Fallback: Tìm dòng có mã ICD (vd "S42.2 - Gãy phần trên...")
-      const fallbackMatch = bannerText.match(/\|\s*([A-Z]\d{2}(?:\.\d+)?\s*-\s*[^|]+?)(?:\s*\||\s*$|\n)/);
-      if (fallbackMatch) chanDoan = fallbackMatch[1].trim();
-    }
-
-    // Nâng cao: Thử tìm trực tiếp trên form nhập liệu (DOM) nếu đang ở màn hình có form
-    try {
-      // Tìm nhãn "Chẩn đoán" và lấy input/textarea gần nhất
-      const labels = Array.from(document.querySelectorAll('label, div, span'));
-      const cdLabel = labels.find(el => el.textContent && el.textContent.trim().match(/^(Chẩn đoán|Chẩn đoán chính)\s*:?$/i));
-      if (cdLabel) {
-        let nextEl = cdLabel.nextElementSibling;
-        if (!nextEl) nextEl = cdLabel.parentElement.nextElementSibling;
-        if (nextEl) {
-          const input = nextEl.querySelector('input, textarea') || (nextEl.tagName === 'INPUT' || nextEl.tagName === 'TEXTAREA' ? nextEl : null);
-          if (input && input.value) {
-            chanDoan = input.value.trim();
-          }
-        }
-      }
-
-      // Tìm nhãn "Bệnh kèm theo"
-      const bktLabel = labels.find(el => el.textContent && el.textContent.trim().match(/^Bệnh kèm theo/i));
-      if (bktLabel) {
-        let nextEl = bktLabel.nextElementSibling;
-        if (!nextEl) nextEl = bktLabel.parentElement.nextElementSibling;
-        if (nextEl) {
-          const input = nextEl.querySelector('input, textarea') || (nextEl.tagName === 'INPUT' || nextEl.tagName === 'TEXTAREA' ? nextEl : null);
-          if (input && input.value && input.value.trim().length > 0) {
-            chanDoan += ' (Kèm theo: ' + input.value.trim() + ')';
-          }
-        }
-      }
-    } catch (e) {
-      console.log('[OASIS] Lỗi khi quét DOM tìm chẩn đoán:', e);
-    }
+    const initialData = extractHisPatientData(parentNode);
 
     // Create the OASIS button
     const btn = document.createElement('button');
@@ -153,7 +141,7 @@ function injectScheduleButtons() {
 
     // Smart Highlight
     const surgicalKeywords = ['viêm ruột thừa', 'gãy', 'u nang', 'thoát vị', 'sỏi', 'ung thư', 'vỡ', 'chấn thương', 'tổn thương nội sọ', 'rách', 'sai khớp'];
-    const isSurgical = surgicalKeywords.some(kw => chanDoan.toLowerCase().includes(kw));
+    const isSurgical = surgicalKeywords.some(kw => initialData.chanDoan.toLowerCase().includes(kw));
     if (isSurgical) {
       btn.style.animation = 'oasisPulse 2s infinite';
     }
@@ -163,8 +151,12 @@ function injectScheduleButtons() {
       e.stopPropagation();
 
       const originalText = btn.innerHTML;
+      const currentData = extractHisPatientData(parentNode);
+      const clickMaBA = currentData.maBA || initialData.maBA;
+      const clickHoTen = currentData.hoTen || initialData.hoTen;
+      const clickNgayNhapVien = currentData.ngayNhapVien || initialData.ngayNhapVien;
       
-      if (!maBA) {
+      if (!clickMaBA) {
         alert('⚠️ OASIS: Không thể trích xuất thông tin bệnh nhân. Vui lòng chọn lại bệnh nhân hoặc tải lại trang!');
         return;
       }
@@ -174,12 +166,21 @@ function injectScheduleButtons() {
       // Tạo một Promise để chờ dữ liệu từ Injected Script
       const fetchDiagnosisFromAPI = () => {
         return new Promise((resolve) => {
-          const eventId = 'oasis_diag_' + Date.now();
+          const eventId = 'oasis_diag_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+          let settled = false;
+          let timeoutId = null;
+
+          const finish = (data) => {
+            if (settled) return;
+            settled = true;
+            if (timeoutId) clearTimeout(timeoutId);
+            window.removeEventListener('message', listener);
+            resolve(data || { cd: '', bkt: '' });
+          };
           
           const listener = (event) => {
             if (event.data && event.data.type === 'OASIS_RES_FETCH_DIAGNOSIS' && event.data.eventId === eventId) {
-              window.removeEventListener('message', listener);
-              resolve(event.data.data);
+              finish(event.data.data);
             }
           };
           window.addEventListener('message', listener);
@@ -187,56 +188,32 @@ function injectScheduleButtons() {
           window.postMessage({
              type: 'OASIS_REQ_FETCH_DIAGNOSIS',
              eventId: eventId,
-             maBA: maBA
+             maBA: clickMaBA
           }, window.location.origin);
 
           // Timeout sau 3s nếu có lỗi
-          setTimeout(() => resolve({ cd: '', bkt: '' }), 3000);
+          timeoutId = setTimeout(() => finish({ cd: '', bkt: '' }), 3000);
         });
       };
 
       const apiData = await fetchDiagnosisFromAPI();
       
-      let finalDiagnosis = chanDoan;
-      if (apiData && apiData.cd) {
-        let icdRegex = /[A-Z]\d{2,3}(?:\.\d{1,2})?/;
-        let domIcd = chanDoan.match(icdRegex);
-        let apiIcd = apiData.cd.match(icdRegex);
-        
-        if (domIcd && apiIcd && domIcd[0] !== apiIcd[0]) {
-            // Khác mã ICD! Nghĩa là DOM (chưa lưu) đang chứa chẩn đoán mới, còn API trả về dữ liệu cũ.
-            // Ta sẽ tin tưởng DOM hơn cho chẩn đoán chính.
-            finalDiagnosis = chanDoan.replace(/\s*\(Kèm theo:.*?\)/, '').trim();
-        } else if (chanDoan.includes(apiData.cd.trim()) && chanDoan.length > apiData.cd.length) {
-            // Giữ lại bản đầy đủ từ DOM, nhưng loại bỏ phần "(Kèm theo: ...)" nếu có để tránh trùng lặp
-            finalDiagnosis = chanDoan.replace(/\s*\(Kèm theo:.*?\)/, '').trim();
-        } else {
-            finalDiagnosis = apiData.cd.trim();
-        }
-        
-        let bkt = apiData.bkt ? apiData.bkt.trim() : '';
-        
-        // Nếu API không trả về bệnh kèm theo nhưng DOM lại quét được, sử dụng của DOM
-        if (!bkt && chanDoan.includes('(Kèm theo:')) {
-           const match = chanDoan.match(/\(Kèm theo:\s*(.*?)\)/);
-           if (match) bkt = match[1].trim();
-        }
-
-        if (bkt) {
-          // Xóa dấu chấm phẩy thừa nếu có ở đầu bkt
-          bkt = bkt.replace(/^;+\s*/, '');
-          finalDiagnosis += '; ' + bkt;
-        }
+      let finalDiagnosis = '';
+      if (apiData && (apiData.cd || apiData.bkt)) {
+        finalDiagnosis = appendUniqueParts(apiData.cd || '', [apiData.bkt || '']);
+      } else {
+        finalDiagnosis = currentData.chanDoan || initialData.chanDoan;
       }
 
       btn.innerHTML = originalText;
+      const clickIsSurgical = surgicalKeywords.some(kw => finalDiagnosis.toLowerCase().includes(kw));
       
       const payload = {
-        patient_id: maBA,
-        patient_name: hoTen,
+        patient_id: clickMaBA,
+        patient_name: clickHoTen,
         diagnosis: finalDiagnosis,
-        admission_date: ngayNhapVien || null,
-        priority: isSurgical ? 'urgent' : 'elective'
+        admission_date: clickNgayNhapVien || null,
+        priority: clickIsSurgical ? 'urgent' : 'elective'
       };
 
       if (chrome && chrome.storage && chrome.storage.local) {

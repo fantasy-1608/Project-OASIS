@@ -79,7 +79,13 @@ export function useSurgeries(date) {
     }
   }, []);
 
-  useEffect(() => { fetchSurgeries(); }, [fetchSurgeries]);
+  useEffect(() => {
+    let isMounted = true;
+    Promise.resolve().then(() => {
+      if (isMounted) fetchSurgeries();
+    });
+    return () => { isMounted = false; };
+  }, [fetchSurgeries]);
 
   // ---- REALTIME ----
   useEffect(() => {

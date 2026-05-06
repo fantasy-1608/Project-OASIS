@@ -1,3 +1,4 @@
+/* global chrome */
 // Background service worker for OASIS extension
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 

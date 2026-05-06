@@ -9,9 +9,7 @@ const PRIORITY_CONFIG = {
   elective:  { label: 'Chương trình', color: 'var(--accent-muted)', bg: 'rgba(161,135,100,0.12)', border: 'rgba(161,135,100,0.3)' },
 };
 
-const SHIFT_LABELS = { morning: '🌅 Ca Sáng', afternoon: '🌆 Ca Chiều', waiting: '🕐 Chờ' };
-
-export function SurgeryCard({ surgery, index, onEdit, onDelete, onMoveToWaiting, onSchedule, onMarkStatus, provided, isDragging, compact }) {
+export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSchedule, onMarkStatus, provided, isDragging }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const priority = PRIORITY_CONFIG[surgery.priority] || PRIORITY_CONFIG.elective;
