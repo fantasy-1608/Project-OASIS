@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 import { SurgeryCard } from '../SurgeryCard/SurgeryCard';
 import { Plus } from 'lucide-react';
@@ -67,6 +67,14 @@ function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting,
   const meta = SHIFT_META[shiftId];
   const emergencyCount = tasks.filter(t => t.priority === 'emergency').length;
 
+  const [isWide, setIsWide] = useState(window.innerWidth >= 700);
+
+  useEffect(() => {
+    const handleResize = () => setIsWide(window.innerWidth >= 700);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <div className="shift-row glass-panel" style={{ borderLeft: `3px solid ${meta.color}` }}>
       {/* Row Header */}
@@ -89,8 +97,8 @@ function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting,
         </div>
       </div>
 
-      {/* Horizontal droppable */}
-      <Droppable droppableId={shiftId} direction="horizontal">
+      {/* Horizontal / Vertical droppable */}
+      <Droppable droppableId={shiftId} direction={isWide ? 'horizontal' : 'vertical'}>
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
