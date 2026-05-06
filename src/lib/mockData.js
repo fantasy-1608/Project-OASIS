@@ -37,14 +37,16 @@ export const MOCK_SURGERIES = [
 // - morning/afternoon : chỉ ca của ngày đang xem
 export function buildInitialBoardState(surgeries, date) {
   const tasks = {};
-  surgeries.forEach(s => { tasks[s.id] = s; });
+  const activeSurgeries = surgeries.filter(s => s.status !== 'completed');
+  
+  activeSurgeries.forEach(s => { tasks[s.id] = s; });
 
-  const waitingIds = surgeries
+  const waitingIds = activeSurgeries
     .filter(s => s.shift === 'waiting' || !s.shift)
     .sort((a, b) => (a.order_in_shift || 999) - (b.order_in_shift || 999))
     .map(s => s.id);
 
-  const daySurgeries = surgeries.filter(s => s.date === date);
+  const daySurgeries = activeSurgeries.filter(s => s.date === date);
   const morningIds   = daySurgeries.filter(s => s.shift === 'morning').map(s => s.id);
   const afternoonIds = daySurgeries.filter(s => s.shift === 'afternoon').map(s => s.id);
 

@@ -5,6 +5,7 @@ import { Header } from './components/Header/Header';
 import { Board } from './components/Board/Board';
 import { SurgeryModal } from './components/Modal/SurgeryModal';
 import { WeekCalendar } from './components/WeekCalendar/WeekCalendar';
+import { HistoryModal } from './components/Modal/HistoryModal';
 import { ToastContainer } from './components/Toast/Toast';
 import { useSurgeries } from './hooks/useSurgeries';
 import { format } from 'date-fns';
@@ -16,6 +17,7 @@ function App() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [toasts, setToasts] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [editingSurgery, setEditingSurgery] = useState(null);
   const [defaultShift, setDefaultShift] = useState('morning');
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -175,10 +177,10 @@ function App() {
 
   const handleMarkDone = useCallback(async (id) => {
     const surgery = surgeries.find(s => s.id === id);
-    const { error } = await deleteSurgery(id);
+    const { error } = await updateSurgery(id, { status: 'completed' });
     if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
     else showToast('success', `✅ ${surgery?.patient_name || ''} — Đã mổ xong!`);
-  }, [surgeries, deleteSurgery, showToast]);
+  }, [surgeries, updateSurgery, showToast]);
 
   // Connection toast
   useEffect(() => {
@@ -200,6 +202,7 @@ function App() {
         onRefresh={refresh}
         totalCases={Object.keys(boardState.tasks).length}
         onOpenCalendar={() => setCalendarOpen(true)}
+        onOpenHistory={() => setShowHistory(true)}
       />
 
       {/* Main Board */}
@@ -238,13 +241,30 @@ function App() {
         currentDate={dateStr}
       />
 
+      {/* History Modal */}
+      {showHistory && (
+        <HistoryModal
+          isOpen={showHistory}
+          onClose={() => setShowHistory(false)}
+          surgeries={surgeries}
+          onRestore={async (id) => {
+            await updateSurgery(id, { status: 'scheduled' });
+            showToast('info', 'Đã khôi phục ca mổ');
+          }}
+          onDelete={async (id) => {
+            await deleteSurgery(id);
+            showToast('info', 'Đã xóa ca mổ vĩnh viễn');
+          }}
+        />
+      )}
+
       {/* Week Calendar */}
       <WeekCalendar
         isOpen={calendarOpen}
         onClose={() => setCalendarOpen(false)}
         currentDate={currentDate}
         onSelectDate={(d) => { setCurrentDate(d); setCalendarOpen(false); }}
-        allSurgeries={surgeries}
+        allSurgeries={surgeries.filter(s => s.status !== 'completed')}
       />
 
       {/* Toast */}
