@@ -21,7 +21,7 @@ export function decryptData(encryptedText) {
     // Nếu giải mã thất bại (do đổi key hoặc data cũ không mã hoá)
     if (!originalText) return encryptedText;
     return originalText;
-  } catch (error) {
+  } catch {
     // Không phải chuỗi mã hoá (dữ liệu cũ)
     return encryptedText;
   }

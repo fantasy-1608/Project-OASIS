@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X, Save } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 
@@ -25,26 +25,26 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
   const [isSaving, setIsSaving] = useState(false);
   const isEdit = !!initialData?.id;
 
-  useEffect(() => {
-    let isMounted = true;
-    Promise.resolve().then(() => {
-      if (!isMounted) return;
-      if (isOpen) {
-        if (initialData) {
-          setForm({ ...DEFAULT_FORM, ...initialData });
-        } else {
-          setForm({
-            ...DEFAULT_FORM,
-            shift: defaultShift || 'morning',
-            date: currentDate || format(new Date(), 'yyyy-MM-dd'),
-            patient_id: generatePatientId(),
-          });
-        }
-        setErrors({});
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  const [prevInitialData, setPrevInitialData] = useState(initialData);
+
+  if (isOpen !== prevIsOpen || initialData !== prevInitialData) {
+    setPrevIsOpen(isOpen);
+    setPrevInitialData(initialData);
+    if (isOpen) {
+      if (initialData) {
+        setForm({ ...DEFAULT_FORM, ...initialData });
+      } else {
+        setForm({
+          ...DEFAULT_FORM,
+          shift: defaultShift || 'morning',
+          date: currentDate || format(new Date(), 'yyyy-MM-dd'),
+          patient_id: generatePatientId(),
+        });
       }
-    });
-    return () => { isMounted = false; };
-  }, [isOpen, initialData, defaultShift, currentDate]);
+      setErrors({});
+    }
+  }
 
   if (!isOpen) return null;
 
@@ -81,16 +81,16 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-panel glass-panel" style={{ maxWidth: '460px' }}>
+      <form className="modal-panel glass-panel" style={{ maxWidth: '460px' }} onSubmit={handleSubmit}>
         {/* Header */}
         <div className="modal-header">
           <div>
             <div className="modal-title">{isEdit ? '✏️ Chỉnh sửa ca mổ' : '➕ Thêm ca mổ'}</div>
           </div>
-          <button className="icon-btn" onClick={onClose}><X size={18} /></button>
+          <button type="button" className="icon-btn" onClick={onClose}><X size={18} /></button>
         </div>
 
-        <form className="modal-body" onSubmit={handleSubmit}>
+        <div className="modal-body">
           {/* Tên bệnh nhân */}
           <div className="form-field">
             <label>Tên bệnh nhân *</label>
@@ -227,16 +227,16 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
               style={{ marginTop: '8px' }}
             />
           </div>
+        </div>
 
-          {/* Actions */}
-          <div className="modal-footer">
-            <button type="button" className="btn-secondary" onClick={onClose}>Huỷ</button>
-            <button type="submit" className="btn-primary" disabled={isSaving}>
-              {isSaving ? '...' : <><Save size={14} /> {isEdit ? 'Cập nhật' : 'Thêm'}</>}
-            </button>
-          </div>
-        </form>
-      </div>
+        {/* Actions */}
+        <div className="modal-footer">
+          <button type="button" className="btn-secondary" onClick={onClose}>Huỷ</button>
+          <button type="submit" className="btn-primary" disabled={isSaving}>
+            {isSaving ? '...' : <><Save size={14} /> {isEdit ? 'Cập nhật' : 'Thêm'}</>}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
