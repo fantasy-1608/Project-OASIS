@@ -129,9 +129,9 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 .waiting-add-btn:hover { border-color: var(--accent-primary); color: var(--accent-primary); background: rgba(212,162,90,0.06); border-style: solid; }
 
 /* Shift rows area — stacked vertically */
-.shift-rows-area { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.shift-rows-area { display: flex; flex-direction: column; gap: 10px; }
 
-.shift-row { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+.shift-row { display: flex; flex-direction: column; overflow: hidden; }
 .shift-row-header {
   padding: 10px 12px; border-bottom: 1px solid var(--border-subtle);
   display: flex; justify-content: space-between; align-items: center;
@@ -174,9 +174,9 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
   .waiting-drop-zone { flex: 1; max-height: none; padding: 10px; gap: 8px; min-height: 60px; }
   .waiting-add-btn { margin: 10px; padding: 9px 14px; font-size: 13px; }
 
-  .shift-rows-area { overflow-y: auto; overflow-x: hidden; }
+  .shift-rows-area { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
 
-  .shift-row { flex: 1; }
+  .shift-row { flex: 1; min-height: 0; }
   .shift-row-header { padding: 12px 16px; }
   .shift-row-icon { font-size: 20px; }
   .shift-row-title { font-size: 14px; }
