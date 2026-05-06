@@ -102,6 +102,37 @@ function appendUniqueParts(base, additions) {
   return parts.join('; ');
 }
 
+function extractDiagnosisFromDOM() {
+  let cd = '';
+  let bkt = '';
+  try {
+    const inputs = Array.from(document.querySelectorAll('textarea, input[type="text"]'));
+    const findByLabelRegex = (regex) => {
+      for (let input of inputs) {
+        if (!input.value || input.value.trim().length < 5) continue;
+        let wrapper = input.parentElement;
+        let depth = 0;
+        while (wrapper && depth < 4) {
+          let text = wrapper.innerText || wrapper.textContent || '';
+          let textWithoutValue = text.replace(input.value, '').trim();
+          if (textWithoutValue.match(regex)) {
+             return input.value.trim();
+          }
+          wrapper = wrapper.parentElement;
+          depth++;
+        }
+      }
+      return '';
+    };
+
+    bkt = findByLabelRegex(/(?:^|\n)\s*(Bệnh kèm theo|Chẩn đoán kèm theo|ICD kèm theo)[\s:*]*$/i);
+    cd = findByLabelRegex(/(?:^|\n)\s*(Chẩn đoán|Bệnh chính|Chẩn đoán chính|ICD chính)[\s:*]*$/i);
+  } catch (e) {
+    console.error('[OASIS] DOM Extraction Error', e);
+  }
+  return { cd, bkt };
+}
+
 // Inject "Lên lịch mổ" (Schedule Surgery) button into HIS UI
 function injectScheduleButtons() {
   // Tìm element chứa chữ "Loại bệnh án:" trong vùng banner Hành chính
@@ -197,12 +228,16 @@ function injectScheduleButtons() {
       };
 
       const apiData = await fetchDiagnosisFromAPI();
+      const domData = extractDiagnosisFromDOM();
       
+      let bestCd = domData.cd || apiData.cd || currentData.chanDoan || initialData.chanDoan || '';
+      let bestBkt = domData.bkt || apiData.bkt || '';
+
       let finalDiagnosis = '';
-      if (apiData && (apiData.cd || apiData.bkt)) {
-        finalDiagnosis = appendUniqueParts(apiData.cd || '', [apiData.bkt || '']);
+      if (bestCd || bestBkt) {
+        finalDiagnosis = appendUniqueParts(bestCd, [bestBkt]);
       } else {
-        finalDiagnosis = currentData.chanDoan || initialData.chanDoan;
+        finalDiagnosis = bestCd;
       }
 
       btn.innerHTML = originalText;
