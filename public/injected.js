@@ -13,10 +13,15 @@
           if (!grid.length) grid = $('#grdDSBenhNhan'); // Fallback Ngoại trú
           
           var selRow = grid.jqGrid('getGridParam', 'selrow');
-          if (selRow) {
-            var rowData = grid.jqGrid('getRowData', selRow);
-            var benhnhanId = rowData.BENHNHANID || '';
-            var khambenhId = rowData.HOSOBENHANID || rowData.TIEPNHANID || rowData.KHAMBENHID || rowData.MADIEUTRI || maBA;
+          var rowData = selRow ? grid.jqGrid('getRowData', selRow) : {};
+          var benhnhanId = rowData.BENHNHANID || '';
+          var khambenhId = rowData.HOSOBENHANID || rowData.TIEPNHANID || rowData.KHAMBENHID || rowData.MADIEUTRI || maBA;
+
+          if (khambenhId) {
+            // Fallback chẩn đoán từ grid (hữu ích cho ngoại trú hoặc nếu chưa có tờ điều trị)
+            var stripHtml = function(html) { return String(html || '').replace(/<[^>]*>?/gm, '').trim(); };
+            var gridCd = stripHtml(rowData.CHANDOAN || rowData.TENBENH || rowData.CHANDOAN_KHAM || rowData.BENHCHINH || rowData.CHAN_DOAN || '');
+            var gridBkt = stripHtml(rowData.CHANDOANKEMTHEO || rowData.BENHKEMTHEO || rowData.PHU || '');
 
             var params = {
                 func: 'ajaxExecuteQueryPaging',
@@ -44,8 +49,9 @@
                     result.cd = latestSheet.CHANDOAN || latestSheet.CHUANDOAN || latestSheet.BENHCHINH || '';
                     result.bkt = latestSheet.CHANDOANKEMTHEO || latestSheet.BENHKEMTHEO || latestSheet.PHU || '';
                     
-                    // Nếu vẫn chưa có chẩn đoán hoặc bệnh kèm theo nhưng có MAUBENHPHAMID, gọi NT.024.2.DETAIL
-                    if ((!result.cd || !result.bkt) && latestSheet.MAUBENHPHAMID) {
+                    // Bỏ điều kiện (!result.cd || !result.bkt) vì có lúc CHANDOAN chỉ trả về mỗi mã ICD ("K21.9")
+                    // Luôn gọi NT.024.2.DETAIL để quét mờ (Universal Scanner) tìm chẩn đoán đầy đủ
+                    if (latestSheet.MAUBENHPHAMID) {
                         var detail = window.jsonrpc.AjaxJson.ajaxCALL_SP_O('NT.024.2.DETAIL', String(latestSheet.MAUBENHPHAMID), 0);
                         var recs = [];
                         if (typeof detail === 'string' && detail.trim() !== '') recs = JSON.parse(detail);
@@ -54,7 +60,7 @@
                         else if (!Array.isArray(recs)) recs = [recs];
                         
                         var allDiagnoses = [];
-                        var icdPatternContains = /(^|\s|\(|\[|-)[A-Z]\d{2,3}(\.\d{1,2})?($|\s|\)|\]|-)/i;
+                        var icdPatternContains = /(?:^|[^A-Z0-9])[A-Z]\d{2,3}(?:\.\d{1,2})?(?:[^A-Z0-9]|$)/i;
                         
                         // Extract from Detail records
                         for (var i = 0; i < recs.length; i++) {
@@ -91,6 +97,16 @@
                                 if (betterCdIndex !== -1) {
                                     result.cd = allDiagnoses[betterCdIndex]; // Lấy bản full
                                     allDiagnoses.splice(betterCdIndex, 1); // Xóa khỏi allDiagnoses để không bị lọt vào bệnh kèm theo
+                                } else if (result.cd.length <= 6) {
+                                    // Fallback: Nếu result.cd chỉ là ICD code (vd "S22.30") và không có chuỗi nào chứa hoàn toàn nó,
+                                    // nhưng có chuỗi bắt đầu bằng mã đó (vd "S22.30 - Gãy xương sườn")
+                                    var startMatch = allDiagnoses.findIndex(function(d) { 
+                                        return d.startsWith(result.cd); 
+                                    });
+                                    if (startMatch !== -1) {
+                                        result.cd = allDiagnoses[startMatch];
+                                        allDiagnoses.splice(startMatch, 1);
+                                    }
                                 }
                                 
                                 // Nếu đã có chẩn đoán chính từ DSPHIEU, thì tất cả những cái tìm được ở DETAIL đưa vào kèm theo (loại trừ cái bị trùng)
@@ -106,6 +122,10 @@
                     }
                 }
             }
+
+            // Nếu vẫn chưa lấy được từ DSPHIEU/DETAIL, dùng dữ liệu grid (ngoại trú)
+            if (!result.cd && gridCd) result.cd = gridCd;
+            if (!result.bkt && gridBkt) result.bkt = gridBkt;
           }
         }
       } catch (e) {

@@ -1,3 +1,4 @@
+/* global chrome */
 // content.js
 // Inject into VNPT HIS to provide OASIS integration
 
@@ -14,7 +15,7 @@ script.onload = function() {
 let oasisCapacity = { morning: 0, afternoon: 0, date: '' };
 
 // Listen for messages from OASIS Background/SidePanel
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'OASIS_CAPACITY_UPDATE') {
     oasisCapacity = msg.payload;
   }
@@ -81,7 +82,7 @@ function injectScheduleButtons() {
     }
 
     // Regex trích xuất ngày nhập viện (Vd: "| 30/04/2026 20:00:00 |")
-    const admDateMatch = bannerText.match(/\|\s*(\d{2}\/\d{2}\/\d{4})\s+\d{2}:\d{2}:\d{2}\s*\|/);
+    const admDateMatch = bannerText.match(/\|\s*(\d{1,4}[/-]\d{1,2}[/-]\d{1,4})\s+\d{1,2}:\d{2}:\d{2}\s*\|/);
     if (admDateMatch) {
       ngayNhapVien = admDateMatch[1]; // "30/04/2026"
     }
@@ -89,7 +90,7 @@ function injectScheduleButtons() {
     // Regex trích xuất Chẩn đoán (Nằm sau cụm ngày tháng giờ, trước thẻ BHYT hoặc cuối chuỗi)
     // Vd: "| 05/05/2026 14:15:00 | S42.2 - Gãy phần trên xương cánh tay Phải | GD4828723281350"
     // Vd: "| 05/05/2026 14:15:00 | S42.2 - Gãy phần trên xương cánh tay Phải"
-    const diagMatch = bannerText.match(/\|\s*\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2}\s*\|\s*([^|]+?)(?:\s*\||\s*$|\n)/);
+    const diagMatch = bannerText.match(/\|\s*\d{1,4}[/-]\d{1,2}[/-]\d{1,4}\s+\d{1,2}:\d{2}:\d{2}\s*\|\s*([^|]+?)(?:\s*\||\s*$|\n)/);
     if (diagMatch) {
       chanDoan = diagMatch[1].trim();
     } else {
@@ -102,7 +103,7 @@ function injectScheduleButtons() {
     try {
       // Tìm nhãn "Chẩn đoán" và lấy input/textarea gần nhất
       const labels = Array.from(document.querySelectorAll('label, div, span'));
-      const cdLabel = labels.find(el => el.textContent && el.textContent.trim() === 'Chẩn đoán');
+      const cdLabel = labels.find(el => el.textContent && el.textContent.trim().match(/^Chẩn đoán/i));
       if (cdLabel) {
         let nextEl = cdLabel.nextElementSibling;
         if (!nextEl) nextEl = cdLabel.parentElement.nextElementSibling;
@@ -115,7 +116,7 @@ function injectScheduleButtons() {
       }
 
       // Tìm nhãn "Bệnh kèm theo"
-      const bktLabel = labels.find(el => el.textContent && el.textContent.trim() === 'Bệnh kèm theo');
+      const bktLabel = labels.find(el => el.textContent && el.textContent.trim().match(/^Bệnh kèm theo/i));
       if (bktLabel) {
         let nextEl = bktLabel.nextElementSibling;
         if (!nextEl) nextEl = bktLabel.parentElement.nextElementSibling;
