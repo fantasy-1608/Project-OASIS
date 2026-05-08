@@ -333,13 +333,32 @@ function App() {
       {/* Main Board */}
       <div className="app-body">
         {loading ? (
-          <div className="loading-screen">
-            <div className="wave-loader">
-              {[...Array(7)].map((_, i) => (
-                <span key={i} className="wave-bar" style={{ animationDelay: `${[0,.1,.2,.3,.4,.3,.2][i]}s` }} />
-              ))}
+          <div className="board-layout board-layout--skeleton" style={{ padding: '10px' }}>
+            <div className="waiting-panel glass-panel" style={{ opacity: 0.6 }}>
+              <div className="waiting-header"><div className="skeleton-title"></div></div>
+              <div className="waiting-drop-zone">
+                <div className="skeleton-card"></div>
+                <div className="skeleton-card"></div>
+                <div className="skeleton-card"></div>
+              </div>
             </div>
-            <span className="loading-text">Đang tải bảng dự kiến mổ...</span>
+            <div className="shift-rows-area" style={{ opacity: 0.6 }}>
+              <div className="shift-row glass-panel">
+                 <div className="shift-row-header"><div className="skeleton-title"></div></div>
+                 <div className="shift-cards-row">
+                   <div className="skeleton-card"></div>
+                   <div className="skeleton-card"></div>
+                   <div className="skeleton-card"></div>
+                 </div>
+              </div>
+              <div className="shift-row glass-panel">
+                 <div className="shift-row-header"><div className="skeleton-title" style={{ width: '90px' }}></div></div>
+                 <div className="shift-cards-row">
+                   <div className="skeleton-card"></div>
+                   <div className="skeleton-card"></div>
+                 </div>
+              </div>
+            </div>
           </div>
         ) : connectionError ? (
           <div className="error-screen glass-panel">

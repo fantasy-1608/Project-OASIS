@@ -143,6 +143,18 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 .shift-row-time { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
 .shift-row-badges { display: flex; gap: 6px; align-items: center; }
 
+/* Breathing Glow (Quá tải) */
+.shift-row--overload { position: relative; }
+.shift-row--overload::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 10;
+  box-shadow: inset 0 0 0 2px rgba(239,68,68,0.5);
+  animation: breathingGlowRed 2.5s infinite ease-in-out;
+}
+@keyframes breathingGlowRed {
+  0%, 100% { opacity: 0.1; }
+  50% { opacity: 0.8; box-shadow: inset 0 0 15px rgba(239,68,68,0.1), inset 0 0 0 2px rgba(239,68,68,0.5); }
+}
+
 /* Cards: vertical layout by default (sidebar) */
 .shift-cards-row {
   display: flex; flex-direction: column; gap: 8px;
@@ -403,7 +415,20 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 
 
 
-/* ===================== LOADING ===================== */
+/* ===================== LOADING SKELETON ===================== */
+.skeleton-title { width: 120px; height: 18px; background: rgba(255,255,255,0.05); border-radius: 4px; }
+.skeleton-card { 
+  width: 100%; min-height: 120px; border-radius: 10px; background: rgba(255,255,255,0.03); 
+  position: relative; overflow: hidden; border: 1px solid var(--border-subtle); flex-shrink: 0;
+}
+@media (min-width: 700px) { .skeleton-card { width: 240px; } }
+.skeleton-card::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(212,162,90, 0.05), transparent);
+  animation: skeletonShimmer 1.5s infinite linear;
+}
+@keyframes skeletonShimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
 .loading-screen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
 .wave-loader { display: flex; align-items: center; gap: 4px; height: 40px; }
 .wave-bar { display: block; width: 5px; border-radius: 5px; background: var(--accent-gradient); height: 100%; animation: waveBar 1s ease-in-out infinite; }
@@ -527,6 +552,19 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
   box-shadow: 0 4px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,162,90,0.1);
   background: rgba(42, 33, 24, 0.95);
 }
+
+/* Ánh kim lướt qua thẻ bài khi hover */
+.surgery-card::before {
+  content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(212,162,90,0.08), transparent);
+  transform: skewX(-20deg); pointer-events: none; z-index: 10;
+  transition: none;
+}
+.surgery-card:hover::before {
+  animation: shimmerSweep 0.8s ease-out forwards;
+}
+@keyframes shimmerSweep { 100% { left: 200%; } }
+
 .surgery-card:active { cursor: grabbing; }
 .surgery-card--emergency { border-color: rgba(239,68,68,0.4) !important; }
 
