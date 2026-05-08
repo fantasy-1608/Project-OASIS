@@ -9,7 +9,7 @@ export function TableView({ boardState }) {
   if (allTasks.length === 0) {
     return (
       <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-        Không có ca mổ nào trong ngày.
+        Không có dự kiến mổ nào trong ngày.
       </div>
     );
   }
@@ -17,6 +17,7 @@ export function TableView({ boardState }) {
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '16px', background: 'var(--bg-primary)' }}>
       <div className="glass-panel" style={{ padding: '1px', overflowX: 'auto' }}>
+        <div className="print-title">DANH SÁCH DỰ KIẾN MỔ</div>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
           <thead>
             <tr style={{ background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -45,7 +46,7 @@ export function TableView({ boardState }) {
                     <div style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>{task.diagnosis}</div>
                     <div style={{ color: 'var(--accent-muted)', fontSize: '11px' }}>{task.surgical_method}</div>
                   </td>
-                  <td style={{ padding: '12px 16px' }}>Đã xếp lịch</td>
+                  <td style={{ padding: '12px 16px' }}>Dự kiến</td>
                 </tr>
               );
             })}

@@ -52,7 +52,7 @@ function WaitingColumn({ tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onS
 
       {isUnlocked && (
         <button className="waiting-add-btn" onClick={() => onAddNew?.('waiting')}>
-          <Plus size={15} /> Thêm ca mổ
+          <Plus size={15} /> Thêm dự kiến
         </button>
       )}
     </div>
@@ -99,7 +99,7 @@ function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting,
             {tasks.length} ca
           </span>
           {isUnlocked && (
-            <button className="column-add-btn" onClick={() => onAddNew?.(shiftId)} title="Thêm ca mổ">
+            <button className="column-add-btn" onClick={() => onAddNew?.(shiftId)} title="Thêm dự kiến mổ">
               <Plus size={13} />
             </button>
           )}
@@ -118,7 +118,7 @@ function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting,
             {tasks.length === 0 && !snapshot.isDraggingOver && (
               <div className="shift-empty">
                 <span style={{ fontSize: '22px', opacity: 0.35 }}>{meta.icon}</span>
-                <span>Kéo ca mổ vào đây</span>
+                <span>Kéo dự kiến mổ vào đây</span>
               </div>
             )}
             {tasks.map((task, index) => (

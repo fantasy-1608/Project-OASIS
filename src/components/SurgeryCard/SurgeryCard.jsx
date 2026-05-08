@@ -19,7 +19,7 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
   const handleEdit = useCallback((e) => { e.stopPropagation(); onEdit?.(surgery); }, [surgery, onEdit]);
   const handleDelete = useCallback((e) => {
     e.stopPropagation();
-    if (window.confirm(`Xác nhận xoá ca mổ của ${surgery.patient_name}?`)) onDelete?.(surgery.id);
+    if (window.confirm(`Xác nhận xoá ${surgery.patient_name} khỏi bảng dự kiến mổ?`)) onDelete?.(surgery.id);
   }, [surgery, onDelete]);
 
   const handleMoveToWaiting = useCallback((e) => {
@@ -31,8 +31,8 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
     e.stopPropagation();
     let msg = '';
     if (status === 'completed') msg = `Xác nhận ${surgery.patient_name} đã mổ xong?`;
-    if (status === 'postponed') msg = `Xác nhận HOÃN ca mổ của ${surgery.patient_name}?`;
-    if (status === 'cancelled') msg = `Xác nhận HỦY ca mổ của ${surgery.patient_name}?`;
+    if (status === 'postponed') msg = `Xác nhận HOÃN dự kiến mổ của ${surgery.patient_name}?`;
+    if (status === 'cancelled') msg = `Xác nhận HỦY dự kiến mổ của ${surgery.patient_name}?`;
     
     if (window.confirm(msg)) {
       onMarkStatus?.(surgery.id, status);
@@ -131,7 +131,7 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
               </button>
             )}
             <button className="card-btn card-btn--schedule" onClick={toggleDatePicker}>
-              <CalendarDays size={12} /> Xếp lịch
+              <CalendarDays size={12} /> Xếp dự kiến
             </button>
             {!isWaiting && (
               <button className="card-btn card-btn--done" onClick={(e) => handleMarkStatus(e, 'completed')}>
@@ -144,7 +144,7 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
           <div className="card-actions-row" style={{ marginTop: '4px' }}>
             <button className="card-btn" style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.1)' }} onClick={(e) => handleMarkStatus(e, 'postponed')}>⏸️ Hoãn mổ</button>
             <button className="card-btn" style={{ color: 'var(--error)', background: 'rgba(239,68,68,0.1)' }} onClick={(e) => handleMarkStatus(e, 'cancelled')}>🚫 Hủy ca</button>
-            <button className="card-btn card-btn--delete" onClick={handleDelete} style={{ marginLeft: 'auto' }}>🗑️ Xóa cứng</button>
+            <button className="card-btn card-btn--delete" onClick={handleDelete} style={{ marginLeft: 'auto' }}>🗑️ Xóa khỏi bảng</button>
           </div>
 
           {/* Date picker dropdown */}

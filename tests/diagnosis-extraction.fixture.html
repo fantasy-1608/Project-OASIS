@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>OASIS diagnosis extraction fixture</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 16px; }
+    label { display: block; margin-top: 12px; font-weight: 700; }
+    input, textarea { display: block; width: 840px; box-sizing: border-box; margin-top: 6px; }
+    textarea { height: 58px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <pre id="result">pending</pre>
+
+  <script>
+    window.chrome = {
+      runtime: {
+        getURL: () => 'data:text/javascript,',
+        onMessage: { addListener: () => {} },
+        sendMessage: () => {},
+      },
+      storage: { local: { set: () => {} } },
+    };
+  </script>
+  <script src="../public/content.js"></script>
+  <script>
+    const cases = [
+      {
+        name: 'visible labels with vitals and grid inputs',
+        html: `
+          <label>Mạch(lần/phút)</label><input value="86">
+          <label>Nhiệt độ(°C)</label><input value="37">
+          <label>Huyết áp(mmHG)</label><input value="120">
+          <label>Kết quả cận lâm sàng</label><textarea></textarea>
+          <label>Chẩn đoán</label>
+          <textarea>A09-Viêm dạ dày - ruột và đại tràng do nguyên nhân nhiễm trùng và chưa xác định được nguồn gốc nhiễm trùng</textarea>
+          <label>Bệnh kèm theo</label>
+          <textarea>K21-Bệnh trào ngược dạ dày - thực quản</textarea>
+          <table><tr><td><input value="1"></td><td><input value="2605061507"></td></tr></table>
+        `,
+        expected: {
+          cd: 'A09-Viêm dạ dày - ruột và đại tràng do nguyên nhân nhiễm trùng và chưa xác định được nguồn gốc nhiễm trùng',
+          bkt: 'K21-Bệnh trào ngược dạ dày - thực quản',
+        },
+      },
+      {
+        name: 'specific textarea ids win before generic labels',
+        html: `
+          <div class="hidden">
+            <label>Chẩn đoán</label><textarea>Junk hidden diagnosis</textarea>
+            <label>Bệnh kèm theo</label><textarea>Junk hidden comorbidity</textarea>
+          </div>
+          <textarea id="tcDieuTritxtCHUANDOAN">R57.2-Sốc nhiễm khuẩn từ đường hô hấp</textarea>
+          <textarea id="tcDieuTritxtBENHKEMTHEO">J96.0-Suy hô hấp cấp; J44.0-Bệnh phổi tắc nghẽn mạn tính đợt cấp do bội nhiễm</textarea>
+          <input value="1">
+        `,
+        expected: {
+          cd: 'R57.2-Sốc nhiễm khuẩn từ đường hô hấp',
+          bkt: 'J96.0-Suy hô hấp cấp; J44.0-Bệnh phổi tắc nghẽn mạn tính đợt cấp do bội nhiễm',
+        },
+      },
+      {
+        name: 'numeric fields cannot override API fallback',
+        html: `
+          <label>Chẩn đoán</label><input value="1">
+          <label>Bệnh kèm theo</label><input value="1">
+          <table><tr><td><input value="2605061495"></td></tr></table>
+        `,
+        expected: { cd: '', bkt: '' },
+      },
+    ];
+
+    const sandbox = document.createElement('div');
+    document.body.appendChild(sandbox);
+
+    const results = cases.map(testCase => {
+      sandbox.innerHTML = testCase.html;
+      const actual = extractCurrentTreatmentTextareas();
+      return {
+        name: testCase.name,
+        actual,
+        expected: testCase.expected,
+        pass: actual.cd === testCase.expected.cd && actual.bkt === testCase.expected.bkt,
+      };
+    });
+
+    document.getElementById('result').textContent = JSON.stringify(results, null, 2);
+  </script>
+</body>
+</html>

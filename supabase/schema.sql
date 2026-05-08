@@ -33,7 +33,7 @@ create table if not exists surgeries (
   diagnosis text,
   procedure text,
   priority text default 'elective' check (priority in ('elective','urgent','emergency')),
-  status text default 'scheduled' check (status in ('scheduled','in_progress','completed','cancelled')),
+  status text default 'scheduled' check (status in ('scheduled','in_progress','completed','postponed','cancelled')),
   date date not null,
   shift text default 'waiting' check (shift in ('waiting','morning','afternoon')),
   start_time text,
@@ -47,6 +47,10 @@ create table if not exists surgeries (
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+alter table surgeries drop constraint if exists surgeries_status_check;
+alter table surgeries add constraint surgeries_status_check
+  check (status in ('scheduled','in_progress','completed','postponed','cancelled'));
 
 -- 4. Enable Realtime
 alter publication supabase_realtime add table surgeries;

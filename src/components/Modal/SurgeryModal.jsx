@@ -85,7 +85,7 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
         {/* Header */}
         <div className="modal-header">
           <div>
-            <div className="modal-title">{isEdit ? '✏️ Chỉnh sửa ca mổ' : '➕ Thêm ca mổ'}</div>
+            <div className="modal-title">{isEdit ? '✏️ Chỉnh sửa dự kiến mổ' : '➕ Thêm dự kiến mổ'}</div>
           </div>
           <button type="button" className="icon-btn" onClick={onClose}><X size={18} /></button>
         </div>
@@ -175,9 +175,9 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
             </div>
           </div>
 
-          {/* Ca mổ */}
+          {/* Buổi dự kiến */}
           <div className="form-field">
-            <label>Ca mổ</label>
+            <label>Buổi dự kiến</label>
             <div className="shift-selector">
               <button
                 type="button"
@@ -203,9 +203,9 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
             </div>
           </div>
 
-          {/* Ngày mổ — quick-select 7 ngày */}
+          {/* Ngày dự kiến — quick-select 7 ngày */}
           <div className="form-field" style={{ opacity: form.shift === 'waiting' ? 0.4 : 1, pointerEvents: form.shift === 'waiting' ? 'none' : 'auto' }}>
-            <label>Ngày mổ {form.shift === 'waiting' && <span style={{fontSize: '11px', color: 'var(--text-muted)'}}>(Không áp dụng cho ca chờ)</span>}</label>
+            <label>Ngày dự kiến {form.shift === 'waiting' && <span style={{fontSize: '11px', color: 'var(--text-muted)'}}>(Không áp dụng cho ca chờ)</span>}</label>
             <div className="date-quick-select">
               {dateOptions.map(opt => (
                 <button
@@ -233,7 +233,7 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
         <div className="modal-footer">
           <button type="button" className="btn-secondary" onClick={onClose}>Huỷ</button>
           <button type="submit" className="btn-primary" disabled={isSaving}>
-            {isSaving ? '...' : <><Save size={14} /> {isEdit ? 'Cập nhật' : 'Thêm'}</>}
+            {isSaving ? '...' : <><Save size={14} /> {isEdit ? 'Cập nhật' : 'Thêm dự kiến'}</>}
           </button>
         </div>
       </form>

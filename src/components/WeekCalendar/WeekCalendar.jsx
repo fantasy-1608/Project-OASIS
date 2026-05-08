@@ -42,7 +42,7 @@ export function WeekCalendar({ isOpen, onClose, currentDate, onSelectDate, allSu
           <div className="cal-title-group">
             <span className="cal-title-icon">📅</span>
             <div>
-              <div className="cal-title">Lịch mổ tuần này</div>
+              <div className="cal-title">Dự kiến mổ tuần này</div>
               <div className="cal-subtitle">
                 {format(weekStart, 'dd/MM', { locale: vi })} – {format(addDays(weekStart, 6), 'dd/MM/yyyy', { locale: vi })}
               </div>
@@ -79,7 +79,7 @@ export function WeekCalendar({ isOpen, onClose, currentDate, onSelectDate, allSu
                 {/* Total badge */}
                 {daySurgeries.length > 0 && (
                   <div className="cal-total-row">
-                    <span className="cal-total-badge">{daySurgeries.length} ca</span>
+                    <span className="cal-total-badge">{daySurgeries.length} dự kiến</span>
                     {emergencyCount > 0 && (
                       <span className="cal-emergency-badge">🚨{emergencyCount}</span>
                     )}

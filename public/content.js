@@ -102,38 +102,181 @@ function appendUniqueParts(base, additions) {
   return parts.join('; ');
 }
 
-function extractDiagnosisFromDOM() {
-  let cd = '';
-  let bkt = '';
-  try {
-    const inputs = Array.from(document.querySelectorAll('textarea, input[type="text"]'));
-    const findByLabelRegex = (regex) => {
-      for (let input of inputs) {
-        if (!input.value || input.value.trim().length < 5) continue;
-        let wrapper = input.parentElement;
-        let depth = 0;
-        while (wrapper && depth < 4) {
-          let text = wrapper.innerText || wrapper.textContent || '';
-          let textWithoutValue = text.replace(input.value, '').trim();
-          if (textWithoutValue.match(regex)) {
-             return input.value.trim();
-          }
-          wrapper = wrapper.parentElement;
-          depth++;
-        }
-      }
-      return '';
-    };
-
-    bkt = findByLabelRegex(/(?:^|\n)\s*(Bệnh kèm theo|Chẩn đoán kèm theo|ICD kèm theo)[\s:*]*$/i);
-    cd = findByLabelRegex(/(?:^|\n)\s*(Chẩn đoán|Bệnh chính|Chẩn đoán chính|ICD chính)[\s:*]*$/i);
-  } catch (e) {
-    console.error('[OASIS] DOM Extraction Error', e);
-  }
-  return { cd, bkt };
+function looksLikeDiagnosisValue(value) {
+  const text = normalizeText(value);
+  if (!text || text.length < 5) return false;
+  if (/^\d+(?:[.,]\d+)?$/.test(text)) return false;
+  if (/^[A-Z]\d{2}(?:\.\d+)?\s*[-–]/i.test(text)) return true;
+  if (/[A-Z]\d{2}(?:\.\d+)?\s*[-–]/i.test(text)) return true;
+  return /[A-Za-zÀ-ỹ]/.test(text) && text.length >= 12;
 }
 
-// Inject "Lên lịch mổ" (Schedule Surgery) button into HIS UI
+function isVisibleElement(el) {
+  if (!el || !el.getBoundingClientRect) return false;
+  const rect = el.getBoundingClientRect();
+  if (rect.width < 1 || rect.height < 1) return false;
+  const style = el.ownerDocument.defaultView.getComputedStyle(el);
+  return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) !== 0;
+}
+
+function getAccessibleDocuments(rootDoc = document, seen = new Set()) {
+  const docs = [];
+  if (!rootDoc || seen.has(rootDoc)) return docs;
+  seen.add(rootDoc);
+  docs.push(rootDoc);
+
+  rootDoc.querySelectorAll('iframe').forEach(iframe => {
+    try {
+      const childDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (childDoc) {
+        docs.push(...getAccessibleDocuments(childDoc, seen));
+      }
+    } catch {
+      // Cross-origin or not ready.
+    }
+  });
+
+  return docs;
+}
+
+function querySelectorAcrossFrames(selectors) {
+  const docs = getAccessibleDocuments();
+  for (const doc of docs) {
+    for (const selector of selectors) {
+      const elements = Array.from(doc.querySelectorAll(selector));
+      for (const el of elements) {
+        if (isVisibleElement(el) && looksLikeDiagnosisValue(el.value || el.innerText || el.textContent)) {
+          return el;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function fieldValue(field) {
+  return normalizeText(field?.value || field?.innerText || field?.textContent || '');
+}
+
+function visibleDiagnosisFields(doc) {
+  return Array.from(doc.querySelectorAll('textarea, input[type="text"], input:not([type]), [contenteditable="true"]'))
+    .filter(field => isVisibleElement(field) && looksLikeDiagnosisValue(fieldValue(field)));
+}
+
+function visibleLabelElements(doc, labelRegex) {
+  const labels = [];
+  const walker = doc.createTreeWalker(doc.body || doc.documentElement, NodeFilter.SHOW_TEXT);
+  let node = walker.nextNode();
+
+  while (node) {
+    const text = normalizeText(node.nodeValue || '');
+    const el = node.parentElement || node.parentNode;
+    if (text && labelRegex.test(text) && isVisibleElement(el)) labels.push(el);
+    node = walker.nextNode();
+  }
+
+  return labels;
+}
+
+function findValueByVisibleLabel(labelRegex) {
+  const docs = getAccessibleDocuments();
+
+  for (const doc of docs) {
+    const fields = visibleDiagnosisFields(doc);
+    const labels = visibleLabelElements(doc, labelRegex);
+
+    for (const label of labels) {
+      const labelRect = label.getBoundingClientRect();
+      const candidates = fields.map(field => {
+        if (field === label || label.contains(field)) return null;
+        const fieldRect = field.getBoundingClientRect();
+        const dy = fieldRect.top - labelRect.bottom;
+        if (dy < -6 || dy > 90) return null;
+
+        const leftDelta = Math.abs(fieldRect.left - labelRect.left);
+        if (leftDelta > 140 && fieldRect.right < labelRect.left) return null;
+
+        return {
+          field,
+          score: (Math.max(dy, 0) * 10) + leftDelta,
+        };
+      }).filter(Boolean).sort((a, b) => a.score - b.score);
+
+      if (candidates.length) return fieldValue(candidates[0].field);
+    }
+  }
+
+  for (const doc of docs) {
+    for (const field of visibleDiagnosisFields(doc)) {
+      const value = fieldValue(field);
+
+      const labelTexts = [];
+      if (field.id) {
+        const label = doc.querySelector(`label[for="${CSS.escape(field.id)}"]`);
+        if (label && isVisibleElement(label)) labelTexts.push(label.innerText || label.textContent || '');
+      }
+
+      let sibling = field.previousElementSibling;
+      let siblingCount = 0;
+      while (sibling && siblingCount < 4) {
+        if (isVisibleElement(sibling) && !sibling.matches('textarea, input, select, [contenteditable="true"]')) {
+          const text = normalizeText(sibling.innerText || sibling.textContent || '');
+          if (text) labelTexts.push(text);
+        }
+        sibling = sibling.previousElementSibling;
+        siblingCount++;
+      }
+
+      const parentPrevious = field.parentElement?.previousElementSibling;
+      if (parentPrevious && !parentPrevious.querySelector('textarea, input, select, [contenteditable="true"]')) {
+        labelTexts.push(parentPrevious.innerText || parentPrevious.textContent || '');
+      }
+
+      const matched = labelTexts.some(text => labelRegex.test(normalizeText(text)));
+      if (matched) return value;
+    }
+  }
+
+  return '';
+}
+
+function extractCurrentTreatmentTextareas() {
+  const getValue = (selectors) => {
+    const el = querySelectorAcrossFrames(selectors);
+    return el ? normalizeText(el.value || el.innerText || el.textContent) : '';
+  };
+
+  return {
+    cd: getValue([
+      '#tcDieuTritxtCHUANDOAN',
+      'textarea[id*="CHUANDOAN" i]',
+      'textarea[name*="CHUANDOAN" i]',
+      'textarea[id*="CHANDOAN" i]:not([id*="KEM" i])',
+      'textarea[name*="CHANDOAN" i]:not([name*="KEM" i])',
+      'input[id*="CHUANDOAN" i]',
+      'input[name*="CHUANDOAN" i]',
+      'input[id*="CHANDOAN" i]:not([id*="KEM" i])',
+      'input[name*="CHANDOAN" i]:not([name*="KEM" i])',
+    ]) || findValueByVisibleLabel(/^(chẩn đoán|bệnh chính|chẩn đoán chính|icd chính)\s*:?\s*$/i),
+    bkt: getValue([
+      '#tcDieuTritxtBENHKEMTHEO',
+      'textarea[id*="kem" i]',
+      'textarea[name*="kem" i]',
+      'textarea[id*="phu" i]',
+      'textarea[name*="phu" i]',
+      'textarea[id*="BENHKEMTHEO"]',
+      'textarea[name*="BENHKEMTHEO"]',
+      'textarea[id*="CHANDOANKEMTHEO"]',
+      'textarea[name*="CHANDOANKEMTHEO"]',
+      'input[id*="kem" i]',
+      'input[name*="kem" i]',
+      'input[id*="phu" i]',
+      'input[name*="phu" i]',
+    ]) || findValueByVisibleLabel(/^(bệnh kèm theo|chẩn đoán kèm theo|icd kèm theo|bệnh phụ)\s*:?\s*$/i),
+  };
+}
+
+// Inject "Lên dự kiến mổ" button into HIS UI
 function injectScheduleButtons() {
   // Tìm element chứa chữ "Loại bệnh án:" trong vùng banner Hành chính
   const xpath = "//*[contains(text(), 'Loại bệnh án:')]";
@@ -153,7 +296,7 @@ function injectScheduleButtons() {
     // Create the OASIS button
     const btn = document.createElement('button');
     btn.className = 'oasis-schedule-btn';
-    btn.innerHTML = '📅 Lên lịch mổ';
+    btn.innerHTML = '📅 Lên dự kiến mổ';
     btn.style.cssText = `
       background: #f59e0b; color: white; border: none; border-radius: 4px;
       padding: 3px 10px; font-size: 13px; margin-left: 16px; cursor: pointer;
@@ -165,9 +308,9 @@ function injectScheduleButtons() {
     const totalToday = oasisCapacity.morning + oasisCapacity.afternoon;
     if (totalToday >= 8) {
       btn.style.background = '#ef4444'; 
-      btn.title = `⚠️ Hôm nay đã có ${totalToday} ca mổ. Cân nhắc chuyển sang ngày mai.`;
+      btn.title = `⚠️ Hôm nay đã có ${totalToday} dự kiến mổ. Cân nhắc chuyển sang ngày mai.`;
     } else {
-      btn.title = 'Chuyển thông tin bệnh nhân này sang OASIS để lên lịch mổ';
+      btn.title = 'Chuyển thông tin bệnh nhân này sang OASIS để xếp dự kiến mổ';
     }
 
     // Smart Highlight
@@ -227,18 +370,20 @@ function injectScheduleButtons() {
         });
       };
 
-      const apiData = await fetchDiagnosisFromAPI();
-      const domData = extractDiagnosisFromDOM();
-      
-      let bestCd = domData.cd || apiData.cd || currentData.chanDoan || initialData.chanDoan || '';
-      let bestBkt = domData.bkt || apiData.bkt || '';
+      const textareaData = extractCurrentTreatmentTextareas();
+      console.log('[OASIS] Current treatment textareas:', textareaData);
 
-      let finalDiagnosis = '';
-      if (bestCd || bestBkt) {
-        finalDiagnosis = appendUniqueParts(bestCd, [bestBkt]);
-      } else {
-        finalDiagnosis = bestCd;
-      }
+      const apiData = await fetchDiagnosisFromAPI();
+      const apiCd = normalizeText(apiData?.cd || '');
+      const apiBkt = normalizeText(apiData?.bkt || '');
+      const fallbackCd = currentData.chanDoan || initialData.chanDoan || '';
+
+      console.log('[OASIS] API treatment diagnosis:', apiData);
+
+      // DOM là nguồn đúng nhất khi tờ điều trị đang mở; API vẫn bổ sung khi DOM thiếu một phần.
+      const bestCd = textareaData.cd || apiCd || fallbackCd;
+      const bestBkt = textareaData.bkt || apiBkt;
+      const finalDiagnosis = appendUniqueParts(bestCd, [bestBkt]);
 
       btn.innerHTML = originalText;
       const clickIsSurgical = surgicalKeywords.some(kw => finalDiagnosis.toLowerCase().includes(kw));

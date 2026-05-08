@@ -35,7 +35,7 @@ export function Header({ currentDate, onDateChange, isOnline, onAddNew, onRefres
         <span className="brand-genie">🧞</span>
         <div>
           <div className="brand-name">Aladinn <span className="brand-oasis">OASIS</span></div>
-          <div className="brand-sub">Surgical Scheduling Dashboard</div>
+          <div className="brand-sub">Bảng dự kiến mổ nội bộ</div>
         </div>
       </div>
 
@@ -60,7 +60,7 @@ export function Header({ currentDate, onDateChange, isOnline, onAddNew, onRefres
         {/* Online status */}
         <div className={`connection-badge ${isOnline ? 'connection-badge--online' : 'connection-badge--offline'}`}>
           {isOnline ? <Wifi size={13} /> : <WifiOff size={13} />}
-          <span>{isOnline ? 'Supabase' : 'Demo Mode'}</span>
+          <span>{isOnline ? 'Dữ liệu khoa' : 'Demo'}</span>
         </div>
 
         {/* Cases count */}
@@ -98,7 +98,7 @@ export function Header({ currentDate, onDateChange, isOnline, onAddNew, onRefres
           <RefreshCw size={16} style={{ animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none' }} />
         </button>
 
-        <button className="icon-btn" onClick={onOpenHistory} title="Lịch sử ca mổ">
+        <button className="icon-btn" onClick={onOpenHistory} title="Kho lưu trữ dự kiến mổ">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-history"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
         </button>
 
@@ -109,7 +109,7 @@ export function Header({ currentDate, onDateChange, isOnline, onAddNew, onRefres
         {isUnlocked && (
           <button className="btn-primary" onClick={() => onAddNew?.()}>
             <Plus size={16} />
-            Thêm ca mổ
+            Thêm dự kiến
           </button>
         )}
       </div>

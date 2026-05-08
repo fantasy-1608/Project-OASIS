@@ -33,11 +33,11 @@ export const MOCK_SURGERIES = [
 ];
 
 // ---- Board State Builder ----
-// - waiting : TẤT CẢ ca chưa lên lịch (không phụ thuộc ngày xem)
+// - waiting : TẤT CẢ ca chưa xếp ngày dự kiến (không phụ thuộc ngày xem)
 // - morning/afternoon : chỉ ca của ngày đang xem
 export function buildInitialBoardState(surgeries, date) {
   const tasks = {};
-  const activeSurgeries = surgeries.filter(s => s.status !== 'completed');
+  const activeSurgeries = surgeries.filter(s => !['completed', 'postponed', 'cancelled'].includes(s.status));
   
   activeSurgeries.forEach(s => { tasks[s.id] = s; });
 

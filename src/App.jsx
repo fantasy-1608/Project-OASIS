@@ -40,7 +40,7 @@ function App() {
 
   const {
     surgeries, boardState,
-    loading, isOnline,
+    loading, isOnline, connectionError,
     addSurgery, updateSurgery, deleteSurgery, moveSurgery, refresh,
   } = useSurgeries(dateStr);
   // ---- Toast system ----
@@ -73,7 +73,7 @@ function App() {
     const handleMessage = (msg) => {
       if (msg.type === 'OASIS_OPEN_ADD_SURGERY') {
         if (!isUnlockedRef.current) {
-          const pwd = window.prompt('Nhập mã mở khóa để thêm ca mổ:');
+          const pwd = window.prompt('Nhập mã mở khóa để thêm dự kiến mổ:');
           if (pwd === 'CTCH') {
             setIsUnlocked(true);
             showToast('success', 'Đã mở khóa!');
@@ -95,7 +95,7 @@ function App() {
         chrome.storage.local.get(['oasis_pending_surgery'], (result) => {
           if (result.oasis_pending_surgery) {
           if (!isUnlockedRef.current) {
-            const pwd = window.prompt('Nhập mã mở khóa để thêm ca mổ:');
+            const pwd = window.prompt('Nhập mã mở khóa để thêm dự kiến mổ:');
             if (pwd === 'CTCH') {
               setIsUnlocked(true);
               showToast('success', 'Đã mở khóa!');
@@ -178,6 +178,11 @@ function App() {
 
     const surgery = boardState.tasks[draggableId];
     const targetShift = destination.droppableId;
+    const targetLabel = targetShift === 'morning' ? 'Ca Sáng' : targetShift === 'afternoon' ? 'Ca Chiều' : 'Danh sách chờ';
+
+    if (!window.confirm(`Xác nhận chuyển ${surgery?.patient_name || 'ca này'} sang ${targetLabel}?`)) {
+      return;
+    }
 
     moveSurgery(draggableId, targetShift, destination.index);
 
@@ -190,7 +195,7 @@ function App() {
   // ---- Modal handlers ----
   const requireUnlock = useCallback(() => {
     if (isUnlockedRef.current) return true;
-    const pwd = window.prompt('Nhập mã mở khóa để thêm/sửa ca mổ:');
+    const pwd = window.prompt('Nhập mã mở khóa để thêm/sửa dự kiến mổ:');
     if (pwd === 'CTCH') {
       setIsUnlocked(true);
       showToast('success', 'Đã mở khóa!');
@@ -231,13 +236,14 @@ function App() {
     const surgery = surgeries.find(s => s.id === id);
     const { error } = await deleteSurgery(id);
     if (error) showToast('error', `❌ Lỗi xoá: ${error}`);
-    else showToast('info', `🗑️ Đã xoá: ${surgery?.patient_name || ''}`);
+    else showToast('info', `🗑️ Đã xoá khỏi bảng dự kiến: ${surgery?.patient_name || ''}`);
   }, [surgeries, deleteSurgery, showToast, requireUnlock]);
 
   // ---- Card quick actions ----
   const handleMoveToWaiting = useCallback(async (id) => {
     if (!requireUnlock()) return;
     const surgery = surgeries.find(s => s.id === id);
+    if (!window.confirm(`Xác nhận trả ${surgery?.patient_name || 'ca này'} về danh sách chờ?`)) return;
     moveSurgery(id, 'waiting', 0);
     const { error } = await updateSurgery(id, { shift: 'waiting' });
     if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
@@ -247,9 +253,10 @@ function App() {
   const handleSchedule = useCallback(async (id, shift, date) => {
     if (!requireUnlock()) return;
     const surgery = surgeries.find(s => s.id === id);
+    const shiftLabel = shift === 'morning' ? 'Ca Sáng' : 'Ca Chiều';
+    if (!window.confirm(`Xác nhận xếp ${surgery?.patient_name || 'ca này'} vào ${shiftLabel} ngày ${date}?`)) return;
     moveSurgery(id, shift, 999);
     const { error } = await updateSurgery(id, { shift, date });
-    const shiftLabel = shift === 'morning' ? 'Ca Sáng' : 'Ca Chiều';
     if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
     else showToast('success', `📅 ${surgery?.patient_name || ''} → ${shiftLabel} ${date.slice(5)}`);
   }, [surgeries, moveSurgery, updateSurgery, showToast, requireUnlock]);
@@ -264,15 +271,15 @@ function App() {
     }
     
     if (status === 'completed') showToast('success', `✅ ${surgery?.patient_name || ''} — Đã mổ xong!`);
-    else if (status === 'postponed') showToast('info', `⏸️ ${surgery?.patient_name || ''} — Đã hoãn mổ!`);
-    else if (status === 'cancelled') showToast('info', `🚫 ${surgery?.patient_name || ''} — Đã hủy ca!`);
+    else if (status === 'postponed') showToast('info', `⏸️ ${surgery?.patient_name || ''} — Đã hoãn dự kiến mổ!`);
+    else if (status === 'cancelled') showToast('info', `🚫 ${surgery?.patient_name || ''} — Đã hủy dự kiến mổ!`);
   }, [surgeries, updateSurgery, showToast, requireUnlock]);
 
   // Connection toast
   useEffect(() => {
     if (!isOnline) {
       setTimeout(() => {
-        showToast('info', '🔌 Chế độ demo. Kết nối Supabase để dùng thật.', 5000);
+        showToast('info', '🔌 Chế độ demo: đang dùng dữ liệu mẫu vì chưa cấu hình Supabase.', 5000);
       }, 0);
     }
   }, [isOnline, showToast]);
@@ -321,7 +328,15 @@ function App() {
                 <span key={i} className="wave-bar" style={{ animationDelay: `${[0,.1,.2,.3,.4,.3,.2][i]}s` }} />
               ))}
             </div>
-            <span className="loading-text">Đang tải lịch mổ...</span>
+            <span className="loading-text">Đang tải bảng dự kiến mổ...</span>
+          </div>
+        ) : connectionError ? (
+          <div className="error-screen glass-panel">
+            <div className="error-title">Không tải được bảng dự kiến mổ</div>
+            <div className="error-text">
+              Supabase đã được cấu hình nhưng đang lỗi kết nối hoặc truy vấn. App không chuyển sang dữ liệu demo để tránh nhầm với dữ liệu thật.
+            </div>
+            <button className="btn-primary" onClick={refresh}>Thử tải lại</button>
           </div>
         ) : (
           <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
@@ -361,11 +376,11 @@ function App() {
           surgeries={surgeries}
           onRestore={async (id) => {
             await updateSurgery(id, { status: 'scheduled' });
-            showToast('info', 'Đã khôi phục ca mổ');
+            showToast('info', 'Đã khôi phục vào bảng dự kiến mổ');
           }}
           onDelete={async (id) => {
             await deleteSurgery(id);
-            showToast('info', 'Đã xóa ca mổ vĩnh viễn');
+            showToast('info', 'Đã xóa khỏi bảng dự kiến');
           }}
         />
       )}
@@ -376,7 +391,7 @@ function App() {
         onClose={() => setCalendarOpen(false)}
         currentDate={currentDate}
         onSelectDate={(d) => { setCurrentDate(d); setCalendarOpen(false); }}
-        allSurgeries={surgeries.filter(s => s.status !== 'completed')}
+        allSurgeries={surgeries.filter(s => !['completed', 'postponed', 'cancelled'].includes(s.status))}
       />
 
       {/* Toast */}

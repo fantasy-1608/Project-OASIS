@@ -55,6 +55,7 @@ function stripUnknownColumns(obj) {
 export function useSurgeries(date) {
   const [surgeries, setSurgeries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [connectionError, setConnectionError] = useState(null);
   const [isOnline] = useState(isSupabaseConfigured);
 
   // ---- FETCH ----
@@ -66,14 +67,16 @@ export function useSurgeries(date) {
     }
     try {
       setLoading(true);
+      setConnectionError(null);
       const { data, error } = await supabase
         .from('surgeries')
         .select('*')
         .order('order_in_shift', { ascending: true });
       if (error) throw error;
       setSurgeries((data || []).map(d => unpackExtras(decryptSurgery(d))));
-    } catch {
-      setSurgeries(MOCK_SURGERIES.map(decryptSurgery));
+    } catch (error) {
+      setConnectionError(error);
+      setSurgeries([]);
     } finally {
       setLoading(false);
     }
@@ -173,6 +176,7 @@ export function useSurgeries(date) {
     boardState,
     loading,
     isOnline,
+    connectionError,
     addSurgery,
     updateSurgery,
     deleteSurgery,

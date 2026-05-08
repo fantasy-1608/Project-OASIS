@@ -18,7 +18,7 @@ export function HistoryModal({ isOpen, onClose, surgeries, onRestore, onDelete }
             <span className="cal-title-icon"><History size={24} color="var(--accent-primary)" /></span>
             <div>
               <div className="cal-title">Kho lưu trữ</div>
-              <div className="cal-subtitle">Danh sách các ca đã mổ, hoãn hoặc hủy</div>
+              <div className="cal-subtitle">Các dự kiến đã mổ, đã hoãn hoặc đã hủy</div>
             </div>
           </div>
           <button className="icon-btn" onClick={onClose}><X size={18} /></button>
@@ -26,7 +26,7 @@ export function HistoryModal({ isOpen, onClose, surgeries, onRestore, onDelete }
 
         <div className="history-list" style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {archived.length === 0 ? (
-            <div className="shift-empty" style={{ margin: 'auto', opacity: 0.5 }}>Chưa có ca mổ nào trong kho lưu trữ.</div>
+            <div className="shift-empty" style={{ margin: 'auto', opacity: 0.5 }}>Chưa có dự kiến mổ nào trong kho lưu trữ.</div>
           ) : (
             archived.map(s => (
               <div key={s.id} className="history-item glass-panel" style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -49,7 +49,7 @@ export function HistoryModal({ isOpen, onClose, surgeries, onRestore, onDelete }
                     <RotateCcw size={14} /> Khôi phục
                   </button>
                   <button className="card-btn card-btn--delete" style={{ padding: '6px 10px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => {
-                    if (window.confirm(`Xóa vĩnh viễn ca mổ của ${s.patient_name}?`)) onDelete(s.id);
+                    if (window.confirm(`Xóa ${s.patient_name} khỏi kho lưu trữ dự kiến mổ?`)) onDelete(s.id);
                   }}>
                     <Trash2 size={14} /> Xóa
                   </button>

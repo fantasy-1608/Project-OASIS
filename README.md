@@ -1,16 +1,16 @@
-# Project OASIS — Surgical Scheduling Dashboard
+# Project OASIS — Bảng dự kiến mổ nội bộ
 
-> Ứng dụng quản lý lịch mổ realtime cho khoa Ngoại — Powered by Aladinn 🧞
+> Ứng dụng xếp dự kiến mổ realtime cho khoa Ngoại — Powered by Aladinn 🧞
 
 ## ✨ Tính năng
 
-- **Kanban Drag & Drop** — Kéo thả ca mổ giữa danh sách chờ, ca sáng, ca chiều
-- **Business Rules Engine** — Cảnh báo tự động khi trùng bác sĩ, quá tải phòng mổ
+- **Kanban Drag & Drop** — Kéo thả dự kiến mổ giữa danh sách chờ, ca sáng, ca chiều
+- **Business Rules Engine** — Cảnh báo quá tải buổi mổ và thao tác cần xác nhận
 - **Realtime** — Nhiều người dùng thấy thay đổi ngay lập tức (qua Supabase)
-- **Date Navigation** — Chuyển ngày xem lịch mổ quá khứ/hiện tại/tương lai
-- **Thống kê** — Sidebar thống kê tổng ca, ca cấp cứu, utilization phòng mổ
+- **Date Navigation** — Chuyển ngày xem bảng dự kiến mổ quá khứ/hiện tại/tương lai
+- **Thống kê** — Tổng số dự kiến, ca cấp cứu và tải theo buổi
 - **Toast Notifications** — Cảnh báo thông minh khi vi phạm nghiệp vụ
-- **Offline Demo Mode** — Chạy với mock data khi chưa có Supabase
+- **Offline Demo Mode** — Chạy với dữ liệu mẫu khi chưa cấu hình Supabase
 
 ## 🚀 Khởi động
 
