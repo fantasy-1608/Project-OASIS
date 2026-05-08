@@ -151,6 +151,59 @@ export function Board({ boardState, onEdit, onDelete, onAddNew, onMoveToWaiting,
   const morningTasks = (boardState.columns['morning']?.taskIds || []).map(id => boardState.tasks[id]).filter(Boolean);
   const afternoonTasks = (boardState.columns['afternoon']?.taskIds || []).map(id => boardState.tasks[id]).filter(Boolean);
 
+  const [isWide, setIsWide] = useState(window.innerWidth >= 700);
+  const [activeTab, setActiveTab] = useState('morning');
+
+  useEffect(() => {
+    const handleResize = () => setIsWide(window.innerWidth >= 700);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  if (!isWide) {
+    return (
+      <div className="board-layout-mobile">
+        <div className="mobile-tabs">
+          <button className={`mobile-tab ${activeTab === 'waiting' ? 'active' : ''}`} onClick={() => setActiveTab('waiting')}>
+            Chờ <span className="tab-badge">{waitingTasks.length}</span>
+          </button>
+          <button className={`mobile-tab ${activeTab === 'morning' ? 'active' : ''}`} onClick={() => setActiveTab('morning')}>
+            Sáng <span className="tab-badge">{morningTasks.length}</span>
+          </button>
+          <button className={`mobile-tab ${activeTab === 'afternoon' ? 'active' : ''}`} onClick={() => setActiveTab('afternoon')}>
+            Chiều <span className="tab-badge">{afternoonTasks.length}</span>
+          </button>
+        </div>
+        <div className="mobile-tab-content">
+          {activeTab === 'waiting' && (
+            <WaitingColumn 
+              tasks={waitingTasks}
+              onEdit={onEdit} onDelete={onDelete} onAddNew={onAddNew} 
+              onMoveToWaiting={onMoveToWaiting} onSchedule={onSchedule} onMarkStatus={onMarkStatus}
+              isUnlocked={isUnlocked}
+            />
+          )}
+          {activeTab === 'morning' && (
+            <ShiftRow 
+              shiftId="morning" tasks={morningTasks} 
+              onEdit={onEdit} onDelete={onDelete} onAddNew={onAddNew} 
+              onMoveToWaiting={onMoveToWaiting} onSchedule={onSchedule} onMarkStatus={onMarkStatus}
+              isUnlocked={isUnlocked}
+            />
+          )}
+          {activeTab === 'afternoon' && (
+            <ShiftRow 
+              shiftId="afternoon" tasks={afternoonTasks} 
+              onEdit={onEdit} onDelete={onDelete} onAddNew={onAddNew} 
+              onMoveToWaiting={onMoveToWaiting} onSchedule={onSchedule} onMarkStatus={onMarkStatus}
+              isUnlocked={isUnlocked}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="board-layout">
       {/* Waiting Column */}

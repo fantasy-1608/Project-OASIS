@@ -4,9 +4,9 @@ import { ChevronRight, CalendarDays, Clock, CheckCircle } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 
 const PRIORITY_CONFIG = {
-  emergency: { label: 'Cấp cứu', color: 'var(--error)', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.4)' },
-  urgent:    { label: 'Bán cấp',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.4)' },
-  elective:  { label: 'Chương trình', color: 'var(--accent-muted)', bg: 'rgba(161,135,100,0.12)', border: 'rgba(161,135,100,0.3)' },
+  emergency: { label: 'Cấp cứu', color: '#ef4444', bg: 'rgba(239,68,68,0.15)', border: 'rgba(239,68,68,0.4)' },
+  urgent:    { label: 'Bán cấp',  color: '#f97316', bg: 'rgba(249,115,22,0.15)', border: 'rgba(249,115,22,0.4)' },
+  elective:  { label: 'Chương trình', color: '#10b981', bg: 'rgba(16,185,129,0.15)', border: 'rgba(16,185,129,0.3)' },
 };
 
 export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSchedule, onMarkStatus, provided, isDragging }) {
@@ -99,15 +99,21 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
       <div className="card-patient-name">{surgery.patient_name}</div>
 
       {/* Diagnosis */}
-      <div className="card-diagnosis">{surgery.diagnosis}</div>
+      <div className="card-diagnosis" title={surgery.diagnosis}>{surgery.diagnosis}</div>
 
       {/* Info tags: PP Mổ + Ngày nhập viện */}
-      {(surgery.surgical_method || surgery.admission_date) && (
+      {(surgery.surgical_method || surgery.admission_date || surgery.surgeon) && (
         <div className="card-info-tags">
           {surgery.surgical_method && (
             <div className="card-info-tag card-info-tag--method">
               <span className="card-info-tag-icon">🔪</span>
               <span>{surgery.surgical_method}</span>
+            </div>
+          )}
+          {surgery.surgeon && (
+            <div className="card-info-tag card-info-tag--date">
+              <span className="card-info-tag-icon">👨‍⚕️</span>
+              <span>PTV: {surgery.surgeon}</span>
             </div>
           )}
           {surgery.admission_date && (

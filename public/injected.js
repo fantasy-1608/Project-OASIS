@@ -274,125 +274,135 @@
     };
   };
 
-  var getLatestTreatmentDiagnosis = function(benhnhanId, khambenhId) {
-    var result = { cd: '', bkt: '', sheet: null };
-    if (!khambenhId) return result;
+  var getLatestTreatmentDiagnosisAsync = function(benhnhanId, khambenhId) {
+    return new Promise(function(resolve) {
+      var result = { cd: '', bkt: '', sheet: null };
+      if (!khambenhId) return resolve(result);
 
-    var params = {
-      func: 'ajaxExecuteQueryPaging',
-      uuid: window.jsonrpc.AjaxJson ? window.jsonrpc.AjaxJson.uuid : '',
-      params: ['NT.024.DSPHIEU'],
-      options: [
-        { name: '[0]', value: '' },
-        { name: '[1]', value: String(benhnhanId || '') },
-        { name: '[2]', value: '4' }, // Loại tờ điều trị
-        { name: '[3]', value: String(khambenhId) }
-      ]
-    };
+      var params = {
+        func: 'ajaxExecuteQueryPaging',
+        uuid: window.jsonrpc.AjaxJson ? window.jsonrpc.AjaxJson.uuid : '',
+        params: ['NT.024.DSPHIEU'],
+        options: [
+          { name: '[0]', value: '' },
+          { name: '[1]', value: String(benhnhanId || '') },
+          { name: '[2]', value: '4' }, // Loại tờ điều trị
+          { name: '[3]', value: String(khambenhId) }
+        ]
+      };
 
-    var res;
-    try {
-      var xhr = new XMLHttpRequest();
-      var url = '/vnpthis/RestService?_search=false&rows=500&page=1&sidx=NGAYMAUBENHPHAM&sord=desc&postData=' + encodeURIComponent(JSON.stringify(params));
-      xhr.open('GET', url, false);
-      xhr.send(null);
+      try {
+        var xhr = new XMLHttpRequest();
+        var url = '/vnpthis/RestService?_search=false&rows=500&page=1&sidx=NGAYMAUBENHPHAM&sord=desc&postData=' + encodeURIComponent(JSON.stringify(params));
+        xhr.open('GET', url, true);
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+              try {
+                var res = JSON.parse(xhr.responseText);
+                var rows = res.rows || [];
+                if (!rows.length) return resolve(result);
 
-      if (xhr.status !== 200) {
-        console.warn('[OASIS API] DSPHIEU status:', xhr.status, xhr.responseText);
-        return result;
+                var latestSheet = pickLatestSheet(rows);
+                result.sheet = latestSheet;
+                result.cd = normalizeDiagnosis(
+                  latestSheet.CHUANDOAN ||
+                  latestSheet.CHANDOAN ||
+                  latestSheet.CHAN_DOAN ||
+                  latestSheet.CHANDOANVAOKHOA ||
+                  latestSheet.CHANDOANRAVIEN ||
+                  latestSheet.BENHCHINH ||
+                  latestSheet.MABENHCHINH ||
+                  latestSheet.ICDCHINH ||
+                  ''
+                );
+
+                var detailRecords = getLatestTreatmentDetail(latestSheet.MAUBENHPHAMID);
+                if (!result.cd) {
+                  var detailCd = firstDetailValueByIds(detailRecords, [10]);
+                  var detailIcd = firstDetailValueByIds(detailRecords, [11]);
+                  if (detailCd && detailIcd && !detailCd.toLowerCase().includes(detailIcd.toLowerCase())) {
+                    result.cd = detailIcd + ' - ' + detailCd;
+                  } else {
+                    result.cd = detailCd;
+                  }
+                }
+                if (!result.cd) {
+                  result.cd = firstFieldValue(detailRecords, [
+                    'CHUANDOAN',
+                    'CHANDOAN',
+                    'CHAN_DOAN',
+                    'BENHCHINH',
+                    'ICDCHINH',
+                    'CHANDOANICD',
+                  ]) || firstLabeledValue(detailRecords, /^(chẩn đoán|chẩn đoán chính|bệnh chính|icd chính)\s*:?$/i, [
+                    'GIATRI',
+                    'GIA_TRI',
+                    'VALUE',
+                    'KETQUA',
+                    'KET_QUA',
+                    'NOIDUNG',
+                    'NOI_DUNG',
+                  ]) || firstTextAfterLabel(detailRecords, /^(chẩn đoán|chẩn đoán chính|bệnh chính|icd chính)\s*:?/i);
+                }
+
+                result.bkt = normalizeDiagnosis(
+                  latestSheet.BENHKEMTHEO ||
+                  latestSheet.BENH_KEM_THEO ||
+                  latestSheet.CHANDOANKEMTHEO ||
+                  latestSheet.CHAN_DOAN_KEM_THEO ||
+                  latestSheet.ICDKEMTHEO ||
+                  latestSheet.PHU ||
+                  ''
+                );
+                if (!result.bkt) {
+                  result.bkt = firstFieldValue(detailRecords, [
+                    'BENHKEMTHEO',
+                    'BENH_KEM_THEO',
+                    'CHANDOANKEMTHEO',
+                    'CHAN_DOAN_KEM_THEO',
+                    'ICDKEMTHEO',
+                    'ICD_KEM_THEO',
+                    'BENHPHU',
+                  ]) || firstLabeledValue(detailRecords, /^(bệnh kèm theo|chẩn đoán kèm theo|icd kèm theo|bệnh phụ)\s*:?$/i, [
+                    'GIATRI',
+                    'GIA_TRI',
+                    'VALUE',
+                    'KETQUA',
+                    'KET_QUA',
+                    'NOIDUNG',
+                    'NOI_DUNG',
+                  ]) || firstTextAfterLabel(detailRecords, /^(bệnh kèm theo|chẩn đoán kèm theo|icd kèm theo|bệnh phụ)\s*:?/i);
+                }
+
+                console.log('[OASIS API] Latest treatment diagnosis:', {
+                  mauBenhPhamId: latestSheet.MAUBENHPHAMID,
+                  cd: result.cd,
+                  bkt: result.bkt,
+                  rowKeys: Object.keys(latestSheet || {}),
+                  detailCount: detailRecords.length
+                });
+
+                resolve(result);
+              } catch (parseError) {
+                console.error('[OASIS API] DSPHIEU parse error:', parseError);
+                resolve(result);
+              }
+            } else {
+              console.warn('[OASIS API] DSPHIEU status:', xhr.status, xhr.responseText);
+              resolve(result);
+            }
+          }
+        };
+        xhr.send(null);
+      } catch (e) {
+        console.error('[OASIS API] DSPHIEU error:', e);
+        resolve(result);
       }
-
-      res = JSON.parse(xhr.responseText);
-    } catch (e) {
-      console.error('[OASIS API] DSPHIEU error:', e);
-      return result;
-    }
-
-    var rows = res.rows || [];
-    if (!rows.length) return result;
-
-    var latestSheet = pickLatestSheet(rows);
-    result.sheet = latestSheet;
-    result.cd = normalizeDiagnosis(
-      latestSheet.CHUANDOAN ||
-      latestSheet.CHANDOAN ||
-      latestSheet.CHAN_DOAN ||
-      latestSheet.CHANDOANVAOKHOA ||
-      latestSheet.CHANDOANRAVIEN ||
-      latestSheet.BENHCHINH ||
-      latestSheet.MABENHCHINH ||
-      latestSheet.ICDCHINH ||
-      ''
-    );
-
-    var detailRecords = getLatestTreatmentDetail(latestSheet.MAUBENHPHAMID);
-    if (!result.cd) {
-      var detailCd = firstDetailValueByIds(detailRecords, [10]);
-      var detailIcd = firstDetailValueByIds(detailRecords, [11]);
-      if (detailCd && detailIcd && !detailCd.toLowerCase().includes(detailIcd.toLowerCase())) {
-        result.cd = detailIcd + ' - ' + detailCd;
-      } else {
-        result.cd = detailCd;
-      }
-    }
-    if (!result.cd) {
-      result.cd = firstFieldValue(detailRecords, [
-        'CHUANDOAN',
-        'CHANDOAN',
-        'CHAN_DOAN',
-        'BENHCHINH',
-        'ICDCHINH',
-        'CHANDOANICD',
-      ]) || firstLabeledValue(detailRecords, /^(chẩn đoán|chẩn đoán chính|bệnh chính|icd chính)\s*:?$/i, [
-        'GIATRI',
-        'GIA_TRI',
-        'VALUE',
-        'KETQUA',
-        'KET_QUA',
-        'NOIDUNG',
-        'NOI_DUNG',
-      ]) || firstTextAfterLabel(detailRecords, /^(chẩn đoán|chẩn đoán chính|bệnh chính|icd chính)\s*:?/i);
-    }
-
-    result.bkt = normalizeDiagnosis(
-      latestSheet.BENHKEMTHEO ||
-      latestSheet.BENH_KEM_THEO ||
-      latestSheet.CHANDOANKEMTHEO ||
-      latestSheet.CHAN_DOAN_KEM_THEO ||
-      latestSheet.ICDKEMTHEO ||
-      latestSheet.PHU ||
-      ''
-    );
-    if (!result.bkt) {
-      result.bkt = firstFieldValue(detailRecords, [
-        'BENHKEMTHEO',
-        'BENH_KEM_THEO',
-        'CHANDOANKEMTHEO',
-        'CHAN_DOAN_KEM_THEO',
-        'ICDKEMTHEO',
-        'ICD_KEM_THEO',
-        'BENHPHU',
-      ]) || firstLabeledValue(detailRecords, /^(bệnh kèm theo|chẩn đoán kèm theo|icd kèm theo|bệnh phụ)\s*:?$/i, [
-        'GIATRI',
-        'GIA_TRI',
-        'VALUE',
-        'KETQUA',
-        'KET_QUA',
-        'NOIDUNG',
-        'NOI_DUNG',
-      ]) || firstTextAfterLabel(detailRecords, /^(bệnh kèm theo|chẩn đoán kèm theo|icd kèm theo|bệnh phụ)\s*:?/i);
-    }
-
-    console.log('[OASIS API] Latest treatment diagnosis:', {
-      mauBenhPhamId: latestSheet.MAUBENHPHAMID,
-      cd: result.cd,
-      bkt: result.bkt,
-      rowKeys: Object.keys(latestSheet || {}),
-      detailCount: detailRecords.length
     });
-
-    return result;
   };
+
+  // (Removed synchronous tail of getLatestTreatmentDiagnosis)
 
   window.addEventListener('message', function(event) {
     if (event.origin !== window.location.origin) return;
@@ -427,13 +437,20 @@
             var gridCd = normalizeDiagnosis(rowData.CHANDOAN || rowData.TENBENH || rowData.CHANDOAN_KHAM || rowData.CHANDOANVAOKHOA || rowData.CHANDOANRAVIEN || rowData.BENHCHINH || rowData.CHAN_DOAN || '');
             var gridBkt = normalizeDiagnosis(rowData.CHANDOANKEMTHEO || rowData.BENHKEMTHEO || rowData.PHU || '');
 
-            var latestDiagnosis = getLatestTreatmentDiagnosis(benhnhanId, sheetScopeId);
-            result.cd = latestDiagnosis.cd;
-            result.bkt = latestDiagnosis.bkt;
+            getLatestTreatmentDiagnosisAsync(benhnhanId, sheetScopeId).then(function(latestDiagnosis) {
+              result.cd = latestDiagnosis.cd;
+              result.bkt = latestDiagnosis.bkt;
 
-            // Nếu vẫn chưa lấy được từ DSPHIEU/DETAIL, dùng dữ liệu grid (ngoại trú)
-            if (!result.cd && gridCd) result.cd = gridCd;
-            if (!result.bkt && gridBkt) result.bkt = gridBkt;
+              if (!result.cd && gridCd) result.cd = gridCd;
+              if (!result.bkt && gridBkt) result.bkt = gridBkt;
+
+              window.postMessage({
+                type: 'OASIS_RES_FETCH_DIAGNOSIS',
+                eventId: eventId,
+                data: result
+              }, window.location.origin);
+            });
+            return; // Exit early since we handle postMessage inside the callback
           }
         }
       } catch (e) {

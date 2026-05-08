@@ -160,13 +160,59 @@ export function useSurgeries(date) {
     return { error };
   }, []);
 
-  const moveSurgery = useCallback(async (id, targetShift, orderInShift) => {
-    const updates = { shift: targetShift, order_in_shift: orderInShift };
-    if (targetShift === 'morning' || targetShift === 'afternoon') {
-      updates.date = date;
+  const moveSurgery = useCallback(async (id, targetShift, targetTaskIds, sourceShift, sourceTaskIds) => {
+    // 1. Calculate updates
+    const updatesMap = {};
+    const newDate = (targetShift === 'morning' || targetShift === 'afternoon') ? date : undefined;
+
+    // Helper to compute updates for a column
+    const computeColumnUpdates = (taskIds, shift) => {
+      taskIds.forEach((taskId, index) => {
+        const surgery = surgeries.find(s => s.id === taskId);
+        if (!surgery) return;
+        const changes = {};
+        if (taskId === id) {
+          changes.shift = shift;
+          if (newDate) changes.date = newDate;
+        }
+        if (surgery.order_in_shift !== index) {
+          changes.order_in_shift = index;
+        }
+        if (Object.keys(changes).length > 0) {
+          updatesMap[taskId] = { ...surgery, ...changes };
+        }
+      });
+    };
+
+    computeColumnUpdates(targetTaskIds, targetShift);
+    if (sourceShift !== targetShift) {
+      computeColumnUpdates(sourceTaskIds, sourceShift);
     }
-    return updateSurgery(id, updates);
-  }, [updateSurgery, date]);
+
+    // 2. Optimistic UI Update
+    setSurgeries(prev => prev.map(s => updatesMap[s.id] || s));
+
+    // 3. Send updates to Supabase asynchronously
+    if (!isSupabaseConfigured) return;
+
+    Object.entries(updatesMap).forEach(async ([taskId, merged]) => {
+      const packed = packExtras(merged);
+      const toSend = {};
+      // Lấy tất cả column changes 
+      for (const key of KNOWN_DB_COLUMNS) {
+        if (merged[key] !== undefined) toSend[key] = packed[key];
+      }
+      toSend.notes = packed.notes || null;
+
+      if (toSend.patient_name) toSend.patient_name = encryptData(toSend.patient_name);
+      if (toSend.diagnosis) toSend.diagnosis = encryptData(toSend.diagnosis);
+      if (toSend.patient_id) toSend.patient_id = encryptData(toSend.patient_id);
+
+      // Fire and forget update
+      await supabase.from('surgeries').update(toSend).eq('id', taskId);
+    });
+
+  }, [surgeries, date]);
 
   // ---- BOARD STATE ----
   const boardState = buildInitialBoardState(surgeries, date);

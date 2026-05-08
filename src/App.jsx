@@ -184,9 +184,22 @@ function App() {
       return;
     }
 
-    moveSurgery(draggableId, targetShift, destination.index);
+    const sourceShift = source.droppableId;
+    const sourceTaskIds = Array.from(boardState.columns[sourceShift]?.taskIds || []);
+    const targetTaskIds = sourceShift === targetShift ? sourceTaskIds : Array.from(boardState.columns[targetShift]?.taskIds || []);
 
-    if (targetShift !== 'waiting' && source.droppableId === 'waiting') {
+    // Prepare arrays for optimistic update
+    sourceTaskIds.splice(source.index, 1);
+    if (sourceShift !== targetShift) {
+      targetTaskIds.splice(destination.index, 0, draggableId);
+    } else {
+      // It's the same array, it was already mutated by splice above, just insert
+      targetTaskIds.splice(destination.index, 0, draggableId);
+    }
+
+    moveSurgery(draggableId, targetShift, targetTaskIds, sourceShift, sourceTaskIds);
+
+    if (targetShift !== 'waiting' && sourceShift === 'waiting') {
       const shiftLabel = targetShift === 'morning' ? 'Ca Sáng' : 'Ca Chiều';
       showToast('success', `✅ ${surgery?.patient_name} → ${shiftLabel}`);
     }
@@ -244,22 +257,20 @@ function App() {
     if (!requireUnlock()) return;
     const surgery = surgeries.find(s => s.id === id);
     if (!window.confirm(`Xác nhận trả ${surgery?.patient_name || 'ca này'} về danh sách chờ?`)) return;
-    moveSurgery(id, 'waiting', 0);
-    const { error } = await updateSurgery(id, { shift: 'waiting' });
+    const { error } = await updateSurgery(id, { shift: 'waiting', order_in_shift: 0 });
     if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
     else showToast('info', `🕐 ${surgery?.patient_name || ''} → Danh sách chờ`);
-  }, [surgeries, moveSurgery, updateSurgery, showToast, requireUnlock]);
+  }, [surgeries, updateSurgery, showToast, requireUnlock]);
 
   const handleSchedule = useCallback(async (id, shift, date) => {
     if (!requireUnlock()) return;
     const surgery = surgeries.find(s => s.id === id);
     const shiftLabel = shift === 'morning' ? 'Ca Sáng' : 'Ca Chiều';
     if (!window.confirm(`Xác nhận xếp ${surgery?.patient_name || 'ca này'} vào ${shiftLabel} ngày ${date}?`)) return;
-    moveSurgery(id, shift, 999);
-    const { error } = await updateSurgery(id, { shift, date });
+    const { error } = await updateSurgery(id, { shift, date, order_in_shift: 999 });
     if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
     else showToast('success', `📅 ${surgery?.patient_name || ''} → ${shiftLabel} ${date.slice(5)}`);
-  }, [surgeries, moveSurgery, updateSurgery, showToast, requireUnlock]);
+  }, [surgeries, updateSurgery, showToast, requireUnlock]);
 
   const handleMarkStatus = useCallback(async (id, status) => {
     if (!requireUnlock()) return;
