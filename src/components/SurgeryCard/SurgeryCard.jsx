@@ -95,10 +95,10 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
 
       {/* Patient name */}
       <div className="card-patient-name">{surgery.patient_name}</div>
-      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '8px' }}>
-        <span className="card-pid">{surgery.patient_id}</span>
-        {(surgery.birth_year || surgery.age) && <span className="card-age">{surgery.birth_year || surgery.age}</span>}
-        {surgery.gender && <span className="card-gender">{surgery.gender}</span>}
+      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', marginBottom: '8px', fontSize: '11px', color: 'var(--text-muted)' }}>
+        {surgery.gender && <span>{surgery.gender},</span>}
+        {(surgery.birth_year || surgery.age) && <span>{surgery.birth_year || surgery.age},</span>}
+        <span className="card-pid">Mã BA: {surgery.patient_id}</span>
       </div>
 
       {/* Diagnosis */}
