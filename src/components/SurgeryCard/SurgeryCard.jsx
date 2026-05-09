@@ -1,6 +1,6 @@
 /* global chrome */
 import { useState, useCallback } from 'react';
-import { ChevronRight, CalendarDays, Clock, CheckCircle } from 'lucide-react';
+import { ChevronRight, CalendarDays, Clock, CheckCircle, Activity, User, Calendar } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 
 const PRIORITY_CONFIG = {
@@ -62,7 +62,7 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
       ref={provided?.innerRef}
       {...provided?.draggableProps}
       {...provided?.dragHandleProps}
-      className={`surgery-card ${isEmergency ? 'surgery-card--emergency' : ''} ${isDragging ? 'surgery-card--dragging' : ''}`}
+      className={`surgery-card surgery-card--${surgery.priority || 'elective'} ${isDragging ? 'surgery-card--dragging' : ''}`}
       style={provided?.draggableProps?.style}
       onClick={() => setIsExpanded(v => !v)}
       onDoubleClick={() => {
@@ -78,8 +78,6 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
         }
       }}
     >
-      {isEmergency && <div className="card-emergency-bar" />}
-
       {/* Priority badge + shift info + expand icon */}
       <div className="card-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -106,19 +104,19 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
         <div className="card-info-tags">
           {surgery.surgical_method && (
             <div className="card-info-tag card-info-tag--method">
-              <span className="card-info-tag-icon">🔪</span>
+              <span className="card-info-tag-icon"><Activity size={12} /></span>
               <span>{surgery.surgical_method}</span>
             </div>
           )}
           {surgery.surgeon && (
             <div className="card-info-tag card-info-tag--date">
-              <span className="card-info-tag-icon">👨‍⚕️</span>
+              <span className="card-info-tag-icon"><User size={12} /></span>
               <span>PTV: {surgery.surgeon}</span>
             </div>
           )}
           {surgery.admission_date && (
             <div className="card-info-tag card-info-tag--date">
-              <span className="card-info-tag-icon">🏥</span>
+              <span className="card-info-tag-icon"><Calendar size={12} /></span>
               <span>Nhập viện: {surgery.admission_date}</span>
             </div>
           )}

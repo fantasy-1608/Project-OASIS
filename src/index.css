@@ -512,34 +512,33 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 .date-option--active { background: rgba(212,162,90,0.15); border-color: var(--accent-primary); color: var(--accent-primary); }
 
 /* ===================== SIMPLIFIED CARD ELEMENTS ===================== */
-.card-patient-name { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; line-height: 1.3; }
+.card-patient-name { font-size: 15px; font-weight: 800; letter-spacing: 0.2px; color: var(--text-primary); margin-bottom: 4px; line-height: 1.3; }
 .card-diagnosis { 
   font-size: 12px; color: var(--text-secondary); line-height: 1.45; margin-bottom: 6px; 
   display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;
 }
 
 /* Card info tags (surgical method, admission date) */
-.card-info-tags { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.card-info-tags { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .card-info-tag {
-  display: flex; align-items: flex-start; gap: 4px;
-  font-size: 11px; line-height: 1.35; padding: 3px 6px;
-  border-radius: 5px; border: 1px solid transparent;
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; line-height: 1; padding: 5px 8px;
+  border-radius: 6px; border: none; font-weight: 500;
 }
-.card-info-tag-icon { font-size: 10px; flex-shrink: 0; margin-top: 1px; }
+.card-info-tag-icon { display: flex; align-items: center; justify-content: center; opacity: 0.8; }
 .card-info-tag--method {
-  color: var(--accent-primary); background: rgba(212,162,90,0.08);
-  border-color: rgba(212,162,90,0.15);
+  color: var(--accent-primary); background: rgba(212,162,90,0.1);
 }
 .card-info-tag--date {
-  color: var(--text-muted); background: rgba(255,255,255,0.03);
-  border-color: rgba(255,255,255,0.06);
+  color: var(--text-secondary); background: rgba(255,255,255,0.04);
 }
 
 /* ===================== SURGERY CARD (DnD-aware) ===================== */
 .surgery-card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: 10px; padding: 12px 14px;
+  border-left: 4px solid var(--border-subtle);
+  border-radius: 10px; padding: 14px 16px;
   cursor: grab; user-select: none;
   /* CRITICAL: Không transition transform — thư viện DnD điều khiển transform trực tiếp */
   transition: box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease, opacity 0.2s ease;
@@ -566,7 +565,11 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 @keyframes shimmerSweep { 100% { left: 200%; } }
 
 .surgery-card:active { cursor: grabbing; }
-.surgery-card--emergency { border-color: rgba(239,68,68,0.4) !important; }
+
+/* Dynamic Left Borders based on Priority */
+.surgery-card--emergency { border-left-color: #ef4444; }
+.surgery-card--urgent { border-left-color: #f97316; }
+.surgery-card--elective { border-left-color: #10b981; }
 
 /* Khi đang kéo: glow vàng sa mạc mượt mà */
 .surgery-card--dragging {
@@ -596,8 +599,7 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 }
 
 /* Card sub-elements */
-.card-emergency-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--error); border-radius: 10px 0 0 10px; }
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .card-pid { font-size: 11px; color: var(--accent-muted); font-weight: 500; font-family: 'Courier New', monospace; }
 .card-age { font-size: 11px; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 0 5px; border-radius: 4px; }
 .card-gender { font-size: 12px; color: var(--text-muted); }
