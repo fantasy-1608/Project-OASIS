@@ -197,10 +197,10 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
   .shift-cards-row {
     flex-direction: row; overflow-x: auto; overflow-y: visible;
     padding: 12px 14px; gap: 10px;
-    align-items: flex-start;
+    align-items: stretch;
     scroll-behavior: smooth; scrollbar-width: thin;
   }
-  .shift-cards-row .surgery-card { width: 240px; }
+  .shift-cards-row .surgery-card { width: 240px; height: auto; }
   .shift-empty { min-width: 200px; }
 }
 
@@ -519,7 +519,7 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 }
 
 /* Card info tags (surgical method, admission date) */
-.card-info-tags { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.card-info-tags { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 8px; }
 .card-info-tag {
   display: flex; align-items: center; gap: 4px;
   font-size: 11px; line-height: 1; padding: 5px 8px;
@@ -545,6 +545,7 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
   position: relative; overflow: hidden;
   will-change: transform;
   flex-shrink: 0;
+  display: flex; flex-direction: column;
 }
 .surgery-card:hover {
   border-color: rgba(212,162,90,0.35);
