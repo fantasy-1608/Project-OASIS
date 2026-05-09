@@ -64,11 +64,23 @@ function extractHisPatientData(anchorNode) {
   }
 
   let maBA = '', hoTen = '', chanDoan = 'Đang chờ cập nhật', benhKemTheo = '', ngayNhapVien = '';
+  let gender = '', birth_year = '';
 
   const nameMatch = bannerText.match(/(?:^|\n)\s*(\d{8,12})\s*\|\s*([^|]+)\s*\|/);
   if (nameMatch) {
     maBA = nameMatch[1].trim();
     hoTen = nameMatch[2].trim();
+  }
+
+  const demoMatch = bannerText.match(/\|\s*(Nam|Nữ)\s*-\s*(\d{4})\s*\|/i);
+  if (demoMatch) {
+    gender = demoMatch[1].trim();
+    birth_year = demoMatch[2].trim();
+  } else {
+    const genderMatch = bannerText.match(/\|\s*(Nam|Nữ)\s*\|/i);
+    if (genderMatch) gender = genderMatch[1].trim();
+    const yearMatch = bannerText.match(/\|\s*(\d{4})\s*\|/);
+    if (yearMatch) birth_year = yearMatch[1].trim();
   }
 
   const admDateMatch = bannerText.match(/\|\s*(\d{1,4}[/-]\d{1,2}[/-]\d{1,4})\s+\d{1,2}:\d{2}:\d{2}\s*\|/);
@@ -84,7 +96,7 @@ function extractHisPatientData(anchorNode) {
     if (fallbackMatch) chanDoan = fallbackMatch[1].trim();
   }
 
-  return { maBA, hoTen, chanDoan, benhKemTheo, ngayNhapVien };
+  return { maBA, hoTen, chanDoan, benhKemTheo, ngayNhapVien, gender, birth_year };
 }
 
 function appendUniqueParts(base, additions) {
@@ -388,12 +400,17 @@ function injectScheduleButtons() {
       btn.innerHTML = originalText;
       const clickIsSurgical = surgicalKeywords.some(kw => finalDiagnosis.toLowerCase().includes(kw));
       
+      const clickGender = currentData.gender || initialData.gender || '';
+      const clickBirthYear = currentData.birth_year || initialData.birth_year || '';
+      
       const payload = {
         patient_id: clickMaBA,
         patient_name: clickHoTen,
         diagnosis: finalDiagnosis,
         admission_date: clickNgayNhapVien || null,
-        priority: clickIsSurgical ? 'urgent' : 'elective'
+        priority: clickIsSurgical ? 'urgent' : 'elective',
+        gender: clickGender,
+        birth_year: clickBirthYear
       };
 
       if (chrome && chrome.storage && chrome.storage.local) {

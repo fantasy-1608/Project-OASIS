@@ -105,6 +105,32 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
             {errors.patient_name && <span className="form-error">{errors.patient_name}</span>}
           </div>
 
+          {/* Giới tính và Năm sinh */}
+          <div className="form-grid-2">
+            <div className="form-field">
+              <label>Giới tính</label>
+              <select
+                className="form-input"
+                value={form.gender || ''}
+                onChange={e => set('gender', e.target.value)}
+              >
+                <option value="">-- Chọn --</option>
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+              </select>
+            </div>
+            <div className="form-field">
+              <label>Năm sinh</label>
+              <input
+                type="text"
+                className="form-input"
+                value={form.birth_year || ''}
+                onChange={e => set('birth_year', e.target.value)}
+                placeholder="VD: 1990"
+              />
+            </div>
+          </div>
+
           {/* Mã bệnh nhân */}
           <div className="form-field">
             <label>Mã bệnh nhân / Mã BA</label>

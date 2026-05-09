@@ -29,6 +29,7 @@ create table if not exists surgeries (
   patient_name text not null,
   patient_id text not null,
   age integer,
+  birth_year text,
   gender text default 'male',
   diagnosis text,
   procedure text,
