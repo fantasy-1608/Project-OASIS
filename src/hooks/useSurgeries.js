@@ -41,6 +41,7 @@ function unpackExtras(surgery) {
 const KNOWN_DB_COLUMNS = [
   'id', 'patient_name', 'diagnosis', 'priority', 'shift', 'date',
   'patient_id', 'status', 'order_in_shift', 'surgeon_id', 'room_id',
+  'gender', 'birth_year', 'age',
   'notes', 'created_at', 'updated_at',
 ];
 
