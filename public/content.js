@@ -79,8 +79,14 @@ function extractHisPatientData(anchorNode) {
   } else {
     const genderMatch = bannerText.match(/\|\s*(Nam|Nữ)\s*\|/i);
     if (genderMatch) gender = genderMatch[1].trim();
-    const yearMatch = bannerText.match(/\|\s*(\d{4})\s*\|/);
-    if (yearMatch) birth_year = yearMatch[1].trim();
+    
+    const ageMatch = bannerText.match(/(\d{4})\s*\(\d+\s*[Tt]uổi\)/i);
+    if (ageMatch) {
+      birth_year = ageMatch[1].trim();
+    } else {
+      const yearMatch = bannerText.match(/\|\s*(\d{4})\s*\|/);
+      if (yearMatch) birth_year = yearMatch[1].trim();
+    }
   }
 
   const admDateMatch = bannerText.match(/\|\s*(\d{1,4}[/-]\d{1,2}[/-]\d{1,4})\s+\d{1,2}:\d{2}:\d{2}\s*\|/);
