@@ -546,6 +546,7 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
   will-change: transform;
   flex-shrink: 0;
   display: flex; flex-direction: column;
+  min-height: max-content;
 }
 .surgery-card:hover {
   border-color: rgba(212,162,90,0.35);
