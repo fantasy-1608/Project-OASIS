@@ -138,7 +138,12 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
   flex-shrink: 0;
 }
 .shift-row-title-group { display: flex; align-items: center; gap: 8px; }
-.shift-row-icon { font-size: 16px; }
+.shift-row-icon {
+  width: 24px; height: 24px; border-radius: 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(212,162,90,0.1); border: 1px solid rgba(212,162,90,0.18);
+}
+.shift-row-icon svg { display: block; }
 .shift-row-title { font-size: 13px; font-weight: 700; }
 .shift-row-time { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
 .shift-row-badges { display: flex; gap: 6px; align-items: center; }
@@ -169,6 +174,7 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
   justify-content: center; color: var(--text-muted); font-size: 12px;
   padding: 16px; opacity: 0.6;
 }
+.shift-empty-icon { opacity: 0.55; display: inline-flex; }
 
 /* ===================== WIDE VIEW (full page, >= 700px) ===================== */
 @media (min-width: 700px) {
@@ -190,7 +196,7 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 
   .shift-row { flex: 1; min-height: min-content; }
   .shift-row-header { padding: 12px 16px; }
-  .shift-row-icon { font-size: 20px; }
+  .shift-row-icon { width: 28px; height: 28px; }
   .shift-row-title { font-size: 14px; }
   .shift-row-time { font-size: 11px; }
 

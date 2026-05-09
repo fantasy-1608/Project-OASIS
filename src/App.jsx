@@ -1,5 +1,5 @@
 /* global chrome */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import { Header } from './components/Header/Header';
 import { Board } from './components/Board/Board';
@@ -296,19 +296,50 @@ function App() {
   }, [isOnline, showToast]);
 
   // --- Render Prep ---
-  // Filter boardState based on searchQuery
-  const filteredBoardState = {
-    ...boardState,
-    tasks: Object.fromEntries(
-      Object.entries(boardState.tasks).filter(([, task]) => {
-        if (!searchQuery) return true;
-        const q = searchQuery.toLowerCase();
-        return (task.patient_name || '').toLowerCase().includes(q) ||
-               (task.patient_id || '').toLowerCase().includes(q) ||
-               (task.diagnosis || '').toLowerCase().includes(q);
-      })
-    )
-  };
+  // Empty search keeps the normal date-scoped board. Active search scans every loaded case.
+  const filteredBoardState = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return boardState;
+
+    const matchesSearch = (task) => (
+      (task.patient_name || '').toLowerCase().includes(q) ||
+      (task.patient_id || '').toLowerCase().includes(q) ||
+      (task.diagnosis || '').toLowerCase().includes(q)
+    );
+
+    const matchedSurgeries = surgeries
+      .filter(s => !['completed', 'postponed', 'cancelled'].includes(s.status))
+      .filter(matchesSearch)
+      .sort((a, b) => (a.order_in_shift || 999) - (b.order_in_shift || 999));
+
+    const tasks = {};
+    matchedSurgeries.forEach(s => { tasks[s.id] = s; });
+
+    return {
+      ...boardState,
+      tasks,
+      columns: {
+        waiting: {
+          ...boardState.columns.waiting,
+          taskIds: matchedSurgeries
+            .filter(s => s.shift === 'waiting' || !s.shift)
+            .map(s => s.id),
+        },
+        morning: {
+          ...boardState.columns.morning,
+          taskIds: matchedSurgeries
+            .filter(s => s.shift === 'morning')
+            .map(s => s.id),
+        },
+        afternoon: {
+          ...boardState.columns.afternoon,
+          taskIds: matchedSurgeries
+            .filter(s => s.shift === 'afternoon')
+            .map(s => s.id),
+        },
+      },
+    };
+  }, [boardState, searchQuery, surgeries]);
 
   return (
     <div className={`app-root ${isDraggingGlobal ? 'is-dragging' : ''}`}>

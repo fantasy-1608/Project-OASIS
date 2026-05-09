@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 import { SurgeryCard } from '../SurgeryCard/SurgeryCard';
-import { Plus } from 'lucide-react';
+import { Plus, Sunrise, Sunset } from 'lucide-react';
 
 // ── Waiting list column (vertical, left side) ──────────────────
 function WaitingColumn({ tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onSchedule, onMarkStatus, isUnlocked }) {
@@ -61,12 +61,13 @@ function WaitingColumn({ tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onS
 
 // ── Shift row (horizontal, right side) ────────────────────────
 const SHIFT_META = {
-  morning:   { icon: '🌅', label: 'Ca Sáng',  time: '07:30 – 11:30', color: '#f59e0b', bg: 'rgba(245,158,11,0.05)' },
-  afternoon: { icon: '🌆', label: 'Ca Chiều', time: '13:30 – 17:00', color: '#d4a25a', bg: 'rgba(212,162,90,0.05)' },
+  morning:   { Icon: Sunrise, label: 'Ca Sáng',  time: '07:30 – 11:30', color: '#f59e0b', bg: 'rgba(245,158,11,0.05)' },
+  afternoon: { Icon: Sunset,  label: 'Ca Chiều', time: '13:30 – 17:00', color: '#d4a25a', bg: 'rgba(212,162,90,0.05)' },
 };
 
 function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onSchedule, onMarkStatus, isUnlocked }) {
   const meta = SHIFT_META[shiftId];
+  const ShiftIcon = meta.Icon;
   const emergencyCount = tasks.filter(t => t.priority === 'emergency').length;
   const isOverload = tasks.length > 4;
 
@@ -83,7 +84,9 @@ function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting,
       {/* Row Header */}
       <div className="shift-row-header">
         <div className="shift-row-title-group">
-          <span className="shift-row-icon">{meta.icon}</span>
+          <span className="shift-row-icon" style={{ color: meta.color }}>
+            <ShiftIcon size={17} strokeWidth={2.3} />
+          </span>
           <div>
             <div className="shift-row-title" style={{ color: isOverload ? 'var(--error)' : 'inherit' }}>
               {meta.label} {isOverload && <span style={{ fontSize: '12px', background: 'var(--error)', color: 'white', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>⚠️ Quá tải</span>}
@@ -117,7 +120,9 @@ function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting,
           >
             {tasks.length === 0 && !snapshot.isDraggingOver && (
               <div className="shift-empty">
-                <span style={{ fontSize: '22px', opacity: 0.35 }}>{meta.icon}</span>
+                <span className="shift-empty-icon" style={{ color: meta.color }}>
+                  <ShiftIcon size={22} strokeWidth={2} />
+                </span>
                 <span>Kéo dự kiến mổ vào đây</span>
               </div>
             )}
