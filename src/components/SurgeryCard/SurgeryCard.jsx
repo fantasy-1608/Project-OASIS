@@ -13,7 +13,6 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
   const [isExpanded, setIsExpanded] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const priority = PRIORITY_CONFIG[surgery.priority] || PRIORITY_CONFIG.elective;
-  const isEmergency = surgery.priority === 'emergency';
   const isWaiting = surgery.shift === 'waiting';
 
   const handleEdit = useCallback((e) => { e.stopPropagation(); onEdit?.(surgery); }, [surgery, onEdit]);
