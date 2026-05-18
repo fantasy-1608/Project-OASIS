@@ -1,21 +1,17 @@
+// @ts-nocheck
 // ============================================================
 // PROJECT OASIS — Supabase Edge Function: Encrypt Proxy
 // ============================================================
 //
 // TRẠNG THÁI: 📐 SCAFFOLD — Chuẩn bị cho compliance nghiêm ngặt
 //
+// File này chạy trong Deno runtime (Supabase Edge Functions),
+// KHÔNG phải trong Vite build. Các Deno API (Deno.serve, Deno.env)
+// chỉ available trong môi trường deploy.
+//
 // Mục đích:
 //   Client gửi plaintext → Edge Function encrypt bằng server key → lưu DB
 //   Client yêu cầu data → Edge Function đọc DB → decrypt → trả plaintext
-//
-// Luồng:
-//   Browser ──plaintext──► Edge Function ──encrypt──► Supabase DB
-//   Browser ◄──plaintext── Edge Function ◄──decrypt── Supabase DB
-//
-// Lợi ích:
-//   - Encryption key KHÔNG BAO GIỜ lộ ra client
-//   - Kể cả dump DB + client code → vẫn không giải mã được
-//   - Vault rotation tự động khi cần đổi key
 //
 // Deploy:
 //   supabase functions deploy encrypt-proxy
@@ -218,7 +214,8 @@ Deno.serve(async (req) => {
     });
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
