@@ -3,24 +3,21 @@
  * PROJECT OASIS — Hook: useAuth
  * ============================================================
  *
- * TRẠNG THÁI: ⏸️  SKELETON — CHƯA KẾT NỐI VÀO APP
+ * Phase 2 — Kích hoạt Supabase Auth + Role-Based Access
  *
  * Khi FEATURES.AUTH_ENABLED = true:
- *   - Thay thế window.prompt('CTCH') trong App.jsx
- *   - Wrap Supabase Auth với role-based access
- *   - LoginModal.jsx sẽ được render thay cơ chế unlock hiện tại
+ *   - Sử dụng Supabase Auth thực sự
+ *   - Role-based permissions (admin, scheduler, nurse, viewer)
+ *   - LoginModal.jsx thay thế window.prompt('CTCH')
  *
- * CÁCH KẾT NỐI vào App.jsx khi sẵn sàng:
- *   1. Import useAuth tại đầu App.jsx
- *   2. Thêm: const { user, role, signIn, signOut, isLoading } = useAuth();
- *   3. Thay isUnlocked bằng role check: canEdit = ['admin','scheduler'].includes(role)
- *   4. Xoá handleToggleLock() và requireUnlock()
- *   5. Set FEATURES.AUTH_ENABLED = true
+ * Khi FEATURES.AUTH_ENABLED = false:
+ *   - Fallback về cơ chế unlock 'CTCH' cũ (không đổi hành vi)
  * ============================================================
  */
 
-import { useState, useCallback } from 'react';
-// import { supabase } from '../lib/supabase'; // Uncomment khi kết nối
+import { useState, useEffect, useCallback } from 'react';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { isEnabled } from '../lib/featureFlags';
 
 // ============================================================
 // Role permissions map
@@ -69,64 +66,105 @@ const ROLE_PERMISSIONS = {
 // Hook
 // ============================================================
 export function useAuth() {
-  // State — setters are intentionally unused until AUTH_ENABLED = true
-   
-  const [user, _setUser] = useState(null);
-  // role stays 'viewer' until AUTH_ENABLED = true (no setter needed yet)
-  const [role] = useState('viewer');
-   
-  const [displayName, _setDisplayName] = useState('');
-  const [isLoading] = useState(false); // false by default; real auth sets this via getSession
-   
-  const [error, _setError] = useState(null);
+  const [user, setUser] = useState(null);
+  const [role, setRole] = useState('viewer');
+  const [displayName, setDisplayName] = useState('');
+  const [isLoading, setIsLoading] = useState(() => isEnabled('AUTH_ENABLED'));
+  const [error, setError] = useState(null);
 
-  // TODO: Implement khi FEATURES.AUTH_ENABLED = true
-  // useEffect(() => {
-  //   // Lấy session hiện tại
-  //   supabase.auth.getSession().then(({ data: { session } }) => {
-  //     setUser(session?.user ?? null);
-  //     if (session?.user) fetchUserProfile(session.user.id);
-  //     setIsLoading(false);
-  //   });
-  //
-  //   // Listen for auth changes
-  //   const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-  //     setUser(session?.user ?? null);
-  //     if (session?.user) fetchUserProfile(session.user.id);
-  //     else { setRole('viewer'); setDisplayName(''); }
-  //   });
-  //
-  //   return () => subscription.unsubscribe();
-  // }, []);
-
-  // const fetchUserProfile = async (userId) => {
-  //   const { data, error } = await supabase
-  //     .from('user_profiles')
-  //     .select('role, display_name')
-  //     .eq('id', userId)
-  //     .single();
-  //   if (!error && data) {
-  //     setRole(data.role);
-  //     setDisplayName(data.display_name);
-  //   }
-  //   setIsLoading(false);
-  // };
-
-   
-  const signIn = useCallback(async (..._args) => {
-    // setIsLoading(true);
-    // const { data, error } = await supabase.auth.signInWithPassword({ email: _email, password: _password });
-    // setIsLoading(false);
-    // if (error) return { error };
-    // return { data };
-    console.warn('[useAuth] signIn: AUTH_ENABLED is false. This is a no-op skeleton.');
-    return { error: new Error('AUTH_ENABLED is false') };
+  // ---- Fetch user profile from DB ----
+  const fetchUserProfile = useCallback(async (userId) => {
+    if (!isSupabaseConfigured || !supabase) return;
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('user_profiles')
+        .select('role, display_name')
+        .eq('id', userId)
+        .single();
+      if (!fetchError && data) {
+        setRole(data.role);
+        setDisplayName(data.display_name);
+      }
+    } catch (err) {
+      console.warn('[useAuth] Could not fetch profile:', err);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
+  // ---- Session management (chỉ chạy khi AUTH_ENABLED) ----
+  useEffect(() => {
+    if (!isEnabled('AUTH_ENABLED') || !isSupabaseConfigured || !supabase) {
+      return;
+    }
+
+    // Lấy session hiện tại
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchUserProfile(session.user.id);
+      } else {
+        setIsLoading(false);
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchUserProfile(session.user.id);
+      } else {
+        setRole('viewer');
+        setDisplayName('');
+        setIsLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [fetchUserProfile]);
+
+  // ---- Sign In ----
+  const signIn = useCallback(async (email, password) => {
+    if (!isEnabled('AUTH_ENABLED')) {
+      console.warn('[useAuth] AUTH_ENABLED is false. signIn is no-op.');
+      return { error: new Error('AUTH_ENABLED is false') };
+    }
+    if (!isSupabaseConfigured || !supabase) {
+      return { error: new Error('Supabase not configured') };
+    }
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (authError) {
+        setError(authError);
+        return { error: authError };
+      }
+      return { data };
+    } catch (err) {
+      setError(err);
+      return { error: err };
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // ---- Sign Out ----
   const signOut = useCallback(async () => {
-    // await supabase.auth.signOut();
-    // _setUser(null); setRole('viewer'); _setDisplayName('');
-    console.warn('[useAuth] signOut: AUTH_ENABLED is false. This is a no-op skeleton.');
+    if (!isEnabled('AUTH_ENABLED')) {
+      console.warn('[useAuth] AUTH_ENABLED is false. signOut is no-op.');
+      return;
+    }
+    if (!isSupabaseConfigured || !supabase) return;
+
+    await supabase.auth.signOut();
+    setUser(null);
+    setRole('viewer');
+    setDisplayName('');
   }, []);
 
   /**
@@ -137,8 +175,6 @@ export function useAuth() {
     return ROLE_PERMISSIONS[role]?.[permission] === true;
   }, [role]);
 
-  // isLoading = false by default (useState(false) above) when AUTH is disabled
-
   return {
     user,
     role,
@@ -148,6 +184,7 @@ export function useAuth() {
     signIn,
     signOut,
     can,
+    isAuthenticated: !!user,
     isAdmin: role === 'admin',
     isScheduler: ['admin', 'scheduler'].includes(role),
     isNurse: role === 'nurse',

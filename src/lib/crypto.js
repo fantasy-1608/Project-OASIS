@@ -1,70 +1,145 @@
 import CryptoJS from 'crypto-js';
 
-// Mật khẩu mặc định hoặc có thể lấy từ localStorage sau này.
-const SECRET_KEY = 'CTCH';
+// ============================================================
+// PROJECT OASIS — Mã hóa thông tin bệnh nhân (PHI Encryption)
+// ============================================================
+// Phase 1: AES-256-CBC + Random IV per encryption
+// - Key từ env var, fallback 'CTCH' cho backward compat
+// - Tự nhận biết data cũ (passphrase mode) vs mới (iv:ciphertext)
+// - Mở rộng danh sách field nhạy cảm
+// ============================================================
 
+const SECRET_KEY = import.meta.env.VITE_CRYPTO_SECRET || 'CTCH';
+
+// Legacy key cho backward compatibility (data đã encrypt trước Phase 1)
+const LEGACY_KEY = 'CTCH';
+
+/**
+ * Danh sách field nhạy cảm (PHI — Protected Health Information)
+ * Các field này sẽ được mã hóa trước khi gửi lên Supabase
+ */
+export const PHI_FIELDS = [
+  // Direct identifiers (trực tiếp nhận diện bệnh nhân)
+  'patient_name',
+  'patient_id',
+  'diagnosis',
+  'surgical_method',
+  'procedure',
+  'notes',
+  'anesthesia',
+  // Quasi-identifiers (kết hợp có thể nhận diện)
+  'age',
+  'birth_year',
+  'gender',
+  'admission_date',
+];
+
+/**
+ * Mã hóa AES-256-CBC với Random IV
+ * Format output: <iv_hex>:<ciphertext_base64>
+ * @param {string} text - Plaintext cần mã hóa
+ * @returns {string} Ciphertext dạng "iv:encrypted"
+ */
 export function encryptData(text) {
   if (!text) return text;
   try {
-    return CryptoJS.AES.encrypt(text, SECRET_KEY).toString();
+    const key = CryptoJS.SHA256(SECRET_KEY);
+    const iv = CryptoJS.lib.WordArray.random(16);
+    const encrypted = CryptoJS.AES.encrypt(String(text), key, {
+      iv,
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7,
+    });
+    // Prepend IV để decrypt biết dùng IV nào
+    return iv.toString(CryptoJS.enc.Hex) + ':' + encrypted.toString();
   } catch (error) {
-    console.error('Lỗi mã hoá:', error);
+    console.error('[Crypto] Lỗi mã hoá:', error);
     return text;
   }
 }
 
+/**
+ * Giải mã — tự nhận biết format cũ (passphrase) vs mới (iv:ciphertext)
+ * @param {string} encryptedText - Ciphertext cần giải mã
+ * @returns {string} Plaintext
+ */
 export function decryptData(encryptedText) {
   if (!encryptedText) return encryptedText;
+  // Bỏ qua giá trị không phải string (boolean, number, etc.)
+  if (typeof encryptedText !== 'string') return encryptedText;
+
   try {
-    const bytes = CryptoJS.AES.decrypt(encryptedText, SECRET_KEY);
-    const originalText = bytes.toString(CryptoJS.enc.Utf8);
-    // Nếu giải mã thất bại (do đổi key hoặc data cũ không mã hoá)
-    if (!originalText) return encryptedText;
-    return originalText;
+    // ---- Format mới: iv_hex(32chars):ciphertext_base64 ----
+    const colonIdx = encryptedText.indexOf(':');
+    if (colonIdx === 32) {
+      const ivHex = encryptedText.substring(0, 32);
+      const ciphertext = encryptedText.substring(33);
+      const key = CryptoJS.SHA256(SECRET_KEY);
+      const iv = CryptoJS.enc.Hex.parse(ivHex);
+      const bytes = CryptoJS.AES.decrypt(ciphertext, key, {
+        iv,
+        mode: CryptoJS.mode.CBC,
+        padding: CryptoJS.pad.Pkcs7,
+      });
+      const result = bytes.toString(CryptoJS.enc.Utf8);
+      if (result) return result;
+    }
+
+    // ---- Format cũ: CryptoJS passphrase mode ----
+    const bytes = CryptoJS.AES.decrypt(encryptedText, LEGACY_KEY);
+    const result = bytes.toString(CryptoJS.enc.Utf8);
+    if (result) return result;
+
+    // Không giải mã được → trả nguyên (dữ liệu plaintext hoặc format lạ)
+    return encryptedText;
   } catch {
-    // Không phải chuỗi mã hoá (dữ liệu cũ)
+    // Không phải chuỗi mã hoá (dữ liệu cũ chưa encrypt)
     return encryptedText;
   }
 }
 
 /**
- * Encrypt specific fields of a surgery object before sending to Supabase
+ * Encrypt toàn bộ field nhạy cảm của surgery object trước khi gửi Supabase
+ * @param {Object} surgery - Surgery record (plaintext)
+ * @returns {Object} Surgery record với PHI fields đã encrypt
  */
 export function encryptSurgery(surgery) {
-  const result = {
-    ...surgery,
-    patient_name: encryptData(surgery.patient_name),
-    diagnosis: encryptData(surgery.diagnosis),
-    patient_id: encryptData(surgery.patient_id),
-  };
-  // surgical_method: chỉ mã hoá nếu đã có trong object (chưa có cột trên Supabase)
-  if ('surgical_method' in surgery) {
-    result.surgical_method = encryptData(surgery.surgical_method);
-  }
-  // admission_date: không mã hoá (ngày tháng, không nhạy cảm)
-  if ('admission_date' in surgery) {
-    result.admission_date = surgery.admission_date;
+  const result = { ...surgery };
+  for (const field of PHI_FIELDS) {
+    if (field in result && result[field]) {
+      result[field] = encryptData(result[field]);
+    }
   }
   return result;
 }
 
 /**
- * Decrypt specific fields of a surgery object after fetching from Supabase
+ * Decrypt toàn bộ field nhạy cảm của surgery object sau khi fetch từ Supabase
+ * @param {Object} surgery - Surgery record (encrypted)
+ * @returns {Object} Surgery record với PHI fields đã decrypt
  */
 export function decryptSurgery(surgery) {
-  const result = {
-    ...surgery,
-    patient_name: decryptData(surgery.patient_name),
-    diagnosis: decryptData(surgery.diagnosis),
-    patient_id: decryptData(surgery.patient_id),
-  };
-  // surgical_method: chỉ giải mã nếu cột tồn tại
-  if ('surgical_method' in surgery) {
-    result.surgical_method = decryptData(surgery.surgical_method);
+  const result = { ...surgery };
+  for (const field of PHI_FIELDS) {
+    if (field in result && result[field]) {
+      result[field] = decryptData(result[field]);
+    }
   }
-  // admission_date: passthrough
-  if ('admission_date' in surgery) {
-    result.admission_date = surgery.admission_date;
+  return result;
+}
+
+/**
+ * Encrypt chỉ các field nhạy cảm trong một partial update object
+ * Dùng trong updateSurgery/moveSurgery khi chỉ gửi subset of fields
+ * @param {Object} updates - Object chứa các field cần update
+ * @returns {Object} Object với PHI fields đã encrypt
+ */
+export function encryptFields(updates) {
+  const result = { ...updates };
+  for (const field of PHI_FIELDS) {
+    if (field in result && result[field]) {
+      result[field] = encryptData(result[field]);
+    }
   }
   return result;
 }

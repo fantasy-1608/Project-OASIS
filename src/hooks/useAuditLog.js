@@ -3,20 +3,24 @@
  * PROJECT OASIS — Hook: useAuditLog
  * ============================================================
  *
- * TRẠNG THÁI: ⏸️  SKELETON — CHƯA KẾT NỐI VÀO APP
+ * Phase 2 — Kích hoạt Audit Log
  *
- * Khi FEATURES.AUDIT_LOG_ENABLED = true + AUTH_ENABLED = true:
- *   - Admin có thể xem toàn bộ lịch sử thao tác
- *   - Hiện trong AuditLogModal (chưa tạo)
+ * Khi FEATURES.AUDIT_LOG_ENABLED = true:
+ *   - Đọc log từ surgery_audit_readable view
+ *   - Ghi log thủ công cho các action không qua DB trigger
+ *
+ * Khi FEATURES.AUDIT_LOG_ENABLED = false:
+ *   - Hoạt động như no-op, không ảnh hưởng app
  *
  * Yêu cầu:
  *   - Migration 003_audit_log.sql đã chạy
- *   - User đang đăng nhập với role 'admin'
+ *   - Migration 002_auth_and_roles.sql đã chạy
  * ============================================================
  */
 
 import { useState, useCallback } from 'react';
-// import { supabase } from '../lib/supabase'; // Uncomment khi kết nối
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { isEnabled } from '../lib/featureFlags';
 
 // ============================================================
 // Action labels (tiếng Việt cho UI)
@@ -47,36 +51,40 @@ export function useAuditLog() {
    * @param {string} [options.date]       - Lọc theo ngày (YYYY-MM-DD)
    * @param {number} [options.limit]      - Số records tối đa (mặc định 50)
    */
-  const fetchLogs = useCallback(async (_options = {}) => {
+  const fetchLogs = useCallback(async (options = {}) => {
+    if (!isEnabled('AUDIT_LOG_ENABLED') || !isSupabaseConfigured || !supabase) {
+      if (import.meta.env.DEV) {
+        console.info('[useAuditLog] fetchLogs: AUDIT_LOG_ENABLED is false or Supabase not configured.');
+      }
+      setLogs([]);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
-    // TODO: Uncomment khi FEATURES.AUDIT_LOG_ENABLED = true
-    // try {
-    //   let query = supabase
-    //     .from('surgery_audit_readable')
-    //     .select('*')
-    //     .order('created_at', { ascending: false })
-    //     .limit(options.limit || 50);
-    //
-    //   if (options.surgeryId) query = query.eq('surgery_id', options.surgeryId);
-    //   if (options.date) {
-    //     query = query.gte('created_at', `${options.date}T00:00:00`)
-    //                  .lte('created_at', `${options.date}T23:59:59`);
-    //   }
-    //
-    //   const { data, error } = await query;
-    //   if (error) throw error;
-    //   setLogs(data || []);
-    // } catch (err) {
-    //   setError(err);
-    // } finally {
-    //   setIsLoading(false);
-    // }
+    try {
+      let query = supabase
+        .from('surgery_audit_readable')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(options.limit || 50);
 
-    console.warn('[useAuditLog] fetchLogs: AUDIT_LOG_ENABLED is false. Returning empty logs.');
-    setLogs([]);
-    setIsLoading(false);
+      if (options.surgeryId) query = query.eq('surgery_id', options.surgeryId);
+      if (options.date) {
+        query = query.gte('created_at', `${options.date}T00:00:00`)
+                     .lte('created_at', `${options.date}T23:59:59`);
+      }
+
+      const { data, error: fetchError } = await query;
+      if (fetchError) throw fetchError;
+      setLogs(data || []);
+    } catch (err) {
+      setError(err);
+      console.error('[useAuditLog] fetchLogs error:', err);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   /**
@@ -84,17 +92,29 @@ export function useAuditLog() {
    * Ví dụ: program_locked, program_unlocked
    */
   const writeLog = useCallback(async (surgeryId, action, options = {}) => {
-    // TODO: Uncomment khi FEATURES.AUDIT_LOG_ENABLED = true
-    // await supabase.from('surgery_audit_log').insert([{
-    //   surgery_id: surgeryId,
-    //   action,
-    //   notes: options.notes,
-    //   before_data: options.beforeData,
-    //   after_data: options.afterData,
-    // }]);
+    if (!isEnabled('AUDIT_LOG_ENABLED') || !isSupabaseConfigured || !supabase) {
+      if (import.meta.env.DEV) {
+        console.info(`[useAuditLog] writeLog (no-op): ${action} on ${surgeryId}`, options);
+      }
+      return;
+    }
 
-    if (import.meta.env.DEV) {
-      console.info(`[useAuditLog] writeLog (no-op): ${action} on ${surgeryId}`, options);
+    try {
+      const { error: insertError } = await supabase
+        .from('surgery_audit_log')
+        .insert([{
+          surgery_id: surgeryId,
+          action,
+          notes: options.notes,
+          before_data: options.beforeData,
+          after_data: options.afterData,
+        }]);
+
+      if (insertError) {
+        console.error('[useAuditLog] writeLog error:', insertError);
+      }
+    } catch (err) {
+      console.error('[useAuditLog] writeLog error:', err);
     }
   }, []);
 

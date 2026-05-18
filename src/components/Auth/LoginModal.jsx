@@ -3,58 +3,58 @@
  * PROJECT OASIS — Component: LoginModal
  * ============================================================
  *
- * TRẠNG THÁI: ⏸️  SKELETON — CHƯA KẾT NỐI VÀO APP
+ * Phase 2 — Kích hoạt Supabase Auth
  *
  * Khi FEATURES.AUTH_ENABLED = true:
- *   - Thay thế window.prompt('CTCH') trong App.jsx
- *   - Hiện modal đăng nhập bằng email/password qua Supabase Auth
+ *   - Modal đăng nhập bằng email/password qua Supabase Auth
  *   - Sau đăng nhập: role được load từ bảng user_profiles
  *
- * Cách kết nối vào App.jsx:
- *   1. Bật FEATURES.AUTH_ENABLED = true
- *   2. Import LoginModal và useAuth trong App.jsx
- *   3. Thay handleToggleLock() bằng signIn/signOut từ useAuth
- *   4. Render <LoginModal> thay cho window.prompt
+ * Khi FEATURES.AUTH_ENABLED = false:
+ *   - Hiện thông báo tính năng chưa được kích hoạt
  * ============================================================
  */
 
 import { useState } from 'react';
-// import { useAuth } from '../../hooks/useAuth'; // Uncomment khi kết nối
+import { useAuth } from '../../hooks/useAuth';
+import { isEnabled } from '../../lib/featureFlags';
 
 // ============================================================
-// LoginModal — Modal đăng nhập thật
+// LoginModal — Modal đăng nhập
 // ============================================================
-export function LoginModal({ isOpen, onClose, onLoginSuccess: _onLoginSuccess }) {
+export function LoginModal({ isOpen, onClose, onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const { signIn } = useAuth();
 
-  // TODO: Uncomment khi FEATURES.AUTH_ENABLED = true
-  // const { signIn } = useAuth();
+  const authEnabled = isEnabled('AUTH_ENABLED');
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!authEnabled) {
+      setError('AUTH_ENABLED = false. Tính năng này chưa được kích hoạt.');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
 
-    // TODO: Replace with actual Supabase Auth
-    // const { error } = await signIn(email, password);
-    // if (error) {
-    //   setError(error.message);
-    //   setIsLoading(false);
-    //   return;
-    // }
-    // onLoginSuccess?.();
-    // onClose();
-
-    // PLACEHOLDER — Xoá khi bật AUTH_ENABLED
-    setTimeout(() => {
-      setError('AUTH_ENABLED = false. Tính năng này chưa được kích hoạt.');
+    const { error: authError } = await signIn(email, password);
+    if (authError) {
+      setError(authError.message === 'Invalid login credentials'
+        ? 'Email hoặc mật khẩu không đúng'
+        : authError.message
+      );
       setIsLoading(false);
-    }, 500);
+      return;
+    }
+
+    onLoginSuccess?.();
+    onClose();
+    setIsLoading(false);
   };
 
   return (
@@ -74,18 +74,20 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess: _onLoginSuccess })
 
         {/* Form */}
         <form onSubmit={handleSubmit} style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {/* Status badge */}
-          <div style={{
-            background: 'rgba(212, 162, 90, 0.12)',
-            border: '1px solid rgba(212, 162, 90, 0.3)',
-            borderRadius: 8,
-            padding: '0.5rem 0.75rem',
-            fontSize: '0.75rem',
-            color: '#d4a25a',
-            textAlign: 'center',
-          }}>
-            ⏸️ Module này đang trong giai đoạn chuẩn bị
-          </div>
+          {/* Status badge — chỉ hiện khi AUTH chưa bật */}
+          {!authEnabled && (
+            <div style={{
+              background: 'rgba(212, 162, 90, 0.12)',
+              border: '1px solid rgba(212, 162, 90, 0.3)',
+              borderRadius: 8,
+              padding: '0.5rem 0.75rem',
+              fontSize: '0.75rem',
+              color: '#d4a25a',
+              textAlign: 'center',
+            }}>
+              ⏸️ Chưa kích hoạt — Bật FEATURES.AUTH_ENABLED = true để sử dụng
+            </div>
+          )}
 
           <div className="form-group">
             <label className="form-label" htmlFor="login-email">Email</label>
@@ -96,7 +98,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess: _onLoginSuccess })
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="bacsi@bvctch.vn"
-              disabled={true}  // Remove disabled khi bật AUTH_ENABLED
+              disabled={!authEnabled}
               required
             />
           </div>
@@ -110,7 +112,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess: _onLoginSuccess })
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••"
-              disabled={true}  // Remove disabled khi bật AUTH_ENABLED
+              disabled={!authEnabled}
               required
             />
           </div>
@@ -130,7 +132,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess: _onLoginSuccess })
           <button
             type="submit"
             className="btn-primary"
-            disabled={isLoading || true}  // Remove `|| true` khi bật AUTH_ENABLED
+            disabled={isLoading || !authEnabled}
             style={{ width: '100%' }}
           >
             {isLoading ? 'Đang đăng nhập...' : 'Đăng Nhập'}
@@ -167,15 +169,14 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess: _onLoginSuccess })
  *
  * Khi AUTH_ENABLED = false: luôn render children (no-op guard)
  */
-import { FEATURES } from '../../lib/featureFlags.js';
+export function RoleGuard({ permission, children, fallback = null }) {
+  const { can } = useAuth();
 
-export function RoleGuard({ permission: _permission, role: _role, children, fallback: _fallback = null }) {
   // Khi AUTH chưa bật: cho qua tất cả
-  if (!FEATURES.AUTH_ENABLED) return children;
+  if (!isEnabled('AUTH_ENABLED')) return children;
 
-  // TODO: Lấy permissions từ useAuth khi AUTH_ENABLED = true
-  // const { can } = useAuth();
-  // if (!can(permission)) return fallback;
+  // Kiểm tra quyền
+  if (permission && !can(permission)) return fallback;
 
   return children;
 }

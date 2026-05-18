@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { MOCK_SURGERIES, buildInitialBoardState } from '../lib/mockData';
-import { encryptSurgery, decryptSurgery, encryptData } from '../lib/crypto';
+import { encryptSurgery, decryptSurgery, encryptFields } from '../lib/crypto';
 
 // ---- Pack/Unpack extra fields into DB `notes` column ----
 // DB chưa có cột surgical_method, admission_date → pack vào notes dưới dạng JSON
@@ -141,12 +141,10 @@ export function useSurgeries(date) {
     // Luôn gửi notes vì extras có thể đã thay đổi
     toSend.notes = packed.notes || null;
 
-    // Encrypt sensitive fields
-    if (toSend.patient_name) toSend.patient_name = encryptData(toSend.patient_name);
-    if (toSend.diagnosis) toSend.diagnosis = encryptData(toSend.diagnosis);
-    if (toSend.patient_id) toSend.patient_id = encryptData(toSend.patient_id);
+    // Encrypt tất cả PHI fields trong toSend
+    const encryptedToSend = encryptFields(toSend);
 
-    const { error } = await supabase.from('surgeries').update(toSend).eq('id', id);
+    const { error } = await supabase.from('surgeries').update(encryptedToSend).eq('id', id);
     if (!error) setSurgeries(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
     return { error };
   }, [surgeries]);
@@ -205,12 +203,11 @@ export function useSurgeries(date) {
       }
       toSend.notes = packed.notes || null;
 
-      if (toSend.patient_name) toSend.patient_name = encryptData(toSend.patient_name);
-      if (toSend.diagnosis) toSend.diagnosis = encryptData(toSend.diagnosis);
-      if (toSend.patient_id) toSend.patient_id = encryptData(toSend.patient_id);
+      // Encrypt tất cả PHI fields
+      const encryptedToSend = encryptFields(toSend);
 
       // Fire and forget update
-      await supabase.from('surgeries').update(toSend).eq('id', taskId);
+      await supabase.from('surgeries').update(encryptedToSend).eq('id', taskId);
     });
 
   }, [surgeries, date]);
