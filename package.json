@@ -1,13 +1,14 @@
 {
   "name": "project-oasis",
   "private": true,
-  "version": "1.1.6",
+  "version": "1.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "release": "npm run build && cd dist && zip -r ../project-oasis-v$npm_package_version.zip ./*"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
