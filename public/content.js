@@ -25,12 +25,7 @@ chrome.runtime.onMessage.addListener((msg) => {
     const hoTen = msg.payload.hoTen;
     console.log('[OASIS] Received reverse navigation request for:', { maBA, hoTen });
     
-    let docs = [];
-    if (typeof getAccessibleDocuments === 'function') {
-      docs = getAccessibleDocuments();
-    } else {
-      docs = [document];
-    }
+    const docs = typeof getAccessibleDocuments === 'function' ? getAccessibleDocuments() : [document];
     
     let gridInput = null;
     let globalInput = null;
