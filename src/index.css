@@ -253,6 +253,12 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
   flex: 1; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; min-height: 0;
 }
 .mobile-tab-content > * { flex: 1; }
+.mobile-tab-content .waiting-drop-zone {
+  flex: 1; max-height: none;
+}
+.mobile-tab-content .shift-cards-row {
+  flex: 1; overflow-y: auto;
+}
 
 
 /* ===================== HEADER ===================== */

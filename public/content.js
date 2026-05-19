@@ -22,26 +22,124 @@ chrome.runtime.onMessage.addListener((msg) => {
   
   if (msg.type === 'OPEN_PATIENT') {
     const maBA = msg.payload.maBA;
-    console.log('[OASIS] Received reverse navigation request for Mã BA:', maBA);
-    // VNPT HIS typically has a global search input or specific form inputs for Mã BA.
-    // Thường ô nhập mã bệnh án có id/name liên quan đến 'maBenhAn'
-    const searchInput = document.querySelector('input[name*="maBenhAn"], input[id*="maBenhAn"], input[placeholder*="Mã bệnh án"]');
-    const searchBtn = document.querySelector('button[id*="btnSearch"]') ||
-      Array.from(document.querySelectorAll('button')).find(btn => btn.textContent.includes('Tìm kiếm')) ||
-      document.querySelector('.btn-primary');
+    const hoTen = msg.payload.hoTen;
+    console.log('[OASIS] Received reverse navigation request for:', { maBA, hoTen });
     
-    if (searchInput) {
-      searchInput.value = maBA;
-      // Kích hoạt sự kiện change/input để React/Angular (nếu có) nhận diện thay đổi
-      searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-      searchInput.dispatchEvent(new Event('change', { bubbles: true }));
-      
-      if (searchBtn) {
-        searchBtn.click();
-      } else {
-        // Fallback: Gửi phím Enter
-        searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
+    let docs = [];
+    if (typeof getAccessibleDocuments === 'function') {
+      docs = getAccessibleDocuments();
+    } else {
+      docs = [document];
+    }
+    
+    let gridInput = null;
+    let globalInput = null;
+    let globalBtn = null;
+
+    for (const doc of docs) {
+      // 1. Tìm input lọc trên Grid (dưới các cột Họ tên)
+      const headers = Array.from(doc.querySelectorAll('th, td')).filter(el => {
+        const t = (el.innerText || el.textContent || '').trim().toLowerCase();
+        return t === 'họ tên' || t === 'tên bệnh nhân';
+      });
+
+      for (const th of headers) {
+        // Tìm input nằm trong cell hiện tại hoặc ở dòng filter bên dưới có cùng chỉ số cột
+        let input = th.querySelector('input[type="text"], input:not([type])');
+        if (!input) {
+           const row = th.parentElement;
+           if (row && row.nextElementSibling) {
+             const children = Array.from(row.children);
+             const index = children.indexOf(th);
+             if (index > -1) {
+               const cellBelow = row.nextElementSibling.children[index];
+               if (cellBelow) {
+                 input = cellBelow.querySelector('input[type="text"], input:not([type])');
+               }
+             }
+           }
+        }
+        if (input && isVisibleElement(input)) {
+          gridInput = input;
+          break;
+        }
       }
+      
+      if (gridInput) break;
+
+      // 2. Tìm dựa trên name/id phổ biến của lưới (Họ tên)
+      if (!gridInput) {
+        const potentialGridInputs = Array.from(doc.querySelectorAll('input[type="text"], input:not([type])')).filter(el => {
+          const idName = (el.id + ' ' + el.name).toLowerCase();
+          return (idName.includes('hoten') || idName.includes('ho_ten') || idName.includes('tenbn')) && isVisibleElement(el);
+        });
+        if (potentialGridInputs.length > 0) gridInput = potentialGridInputs[0];
+      }
+      if (gridInput) break;
+      
+      // 3. Tìm global input (bên trái) - vẫn dùng Mã BA
+      if (!globalInput) {
+        globalInput = doc.querySelector('input[name*="maBenhAn" i], input[id*="maBenhAn" i], input[placeholder*="Mã bệnh án" i]');
+        globalBtn = doc.querySelector('button[id*="btnSearch" i], button[id*="btnTimKiem" i]') ||
+          Array.from(doc.querySelectorAll('button')).find(btn => btn.textContent.includes('Tìm kiếm')) ||
+          doc.querySelector('.btn-primary');
+      }
+    }
+
+    if (gridInput && hoTen) {
+      console.log('[OASIS] Found target grid input for reverse navigation (Họ tên):', gridInput);
+      gridInput.focus();
+      
+      // Giả lập gõ phím theo logic Aladinn Sign: chừa lại ký tự cuối để gõ
+      const textToType = String(hoTen).trim().toUpperCase();
+      if (textToType.length > 1) {
+        const firstPart = textToType.slice(0, -1);
+        const lastChar = textToType.slice(-1);
+        
+        // Điền phần đầu
+        gridInput.value = firstPart;
+        gridInput.dispatchEvent(new Event('input', { bubbles: true }));
+        gridInput.dispatchEvent(new Event('change', { bubbles: true }));
+        
+        // Đợi một chút rồi gõ ký tự cuối
+        setTimeout(() => {
+          gridInput.value = textToType;
+          gridInput.dispatchEvent(new Event('input', { bubbles: true }));
+          
+          const charCode = lastChar.charCodeAt(0);
+          gridInput.dispatchEvent(new KeyboardEvent('keydown', { key: lastChar, keyCode: charCode, which: charCode, bubbles: true }));
+          gridInput.dispatchEvent(new KeyboardEvent('keypress', { key: lastChar, keyCode: charCode, which: charCode, bubbles: true }));
+          gridInput.dispatchEvent(new KeyboardEvent('keyup', { key: lastChar, keyCode: charCode, which: charCode, bubbles: true }));
+          
+          // Giả lập phím Enter để chốt bộ lọc
+          setTimeout(() => {
+            gridInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+            gridInput.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+          }, 100);
+        }, 50);
+      } else {
+        // Tên quá ngắn thì dùng cách cũ
+        gridInput.value = textToType;
+        gridInput.dispatchEvent(new Event('input', { bubbles: true }));
+        gridInput.dispatchEvent(new Event('change', { bubbles: true }));
+        gridInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
+        gridInput.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', keyCode: 13, bubbles: true }));
+      }
+    } else if (globalInput) {
+      console.log('[OASIS] Falling back to global search (Mã BA):', globalInput);
+      globalInput.focus();
+      globalInput.value = maBA;
+      globalInput.dispatchEvent(new Event('input', { bubbles: true }));
+      globalInput.dispatchEvent(new Event('change', { bubbles: true }));
+      
+      if (globalBtn) {
+        globalBtn.click();
+      } else {
+        globalInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
+        globalInput.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', keyCode: 13, bubbles: true }));
+      }
+    } else {
+      console.warn('[OASIS] Could not find any input to search for Patient');
     }
   }
 });

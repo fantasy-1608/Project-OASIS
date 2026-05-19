@@ -12,6 +12,7 @@ const PRIORITY_CONFIG = {
 export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSchedule, onMarkStatus, provided, isDragging }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const isExtension = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
   const priority = PRIORITY_CONFIG[surgery.priority] || PRIORITY_CONFIG.elective;
   const isWaiting = surgery.shift === 'waiting';
 
@@ -66,13 +67,13 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
       onClick={() => setIsExpanded(v => !v)}
       onDoubleClick={() => {
         if (typeof chrome !== 'undefined' && chrome.tabs) {
-          chrome.tabs.query({ url: '*://*.vncare.vn/*' }, (tabs) => {
-            tabs.forEach(tab => {
-              chrome.tabs.sendMessage(tab.id, {
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs && tabs.length > 0) {
+              chrome.tabs.sendMessage(tabs[0].id, {
                 type: 'OPEN_PATIENT',
-                payload: { maBA: surgery.patient_id }
+                payload: { maBA: surgery.patient_id, hoTen: surgery.patient_name }
               }).catch(() => {});
-            });
+            }
           });
         }
       }}
@@ -89,7 +90,34 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
             </span>
           )}
         </div>
-        <ChevronRight size={13} className={`expand-icon ${isExpanded ? 'expand-icon--open' : ''}`} style={{ color: 'var(--text-muted)' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {isExtension && (
+            <button 
+              title="Mở bệnh án trên VNPT HIS"
+              style={{ 
+                background: 'rgba(14,165,233,0.1)', border: '1px solid rgba(14,165,233,0.2)', padding: '2px 6px', 
+                color: '#0ea5e9', fontSize: '10px', fontWeight: '500', cursor: 'pointer', borderRadius: '4px',
+                display: 'flex', alignItems: 'center', gap: '4px'
+              }} 
+              onClick={(e) => {
+                e.stopPropagation();
+                if (typeof chrome !== 'undefined' && chrome.tabs) {
+                  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                    if (tabs && tabs.length > 0) {
+                      chrome.tabs.sendMessage(tabs[0].id, {
+                        type: 'OPEN_PATIENT',
+                        payload: { maBA: surgery.patient_id, hoTen: surgery.patient_name }
+                      }).catch(() => {});
+                    }
+                  });
+                }
+              }}
+            >
+              🏥 HIS
+            </button>
+          )}
+          <ChevronRight size={13} className={`expand-icon ${isExpanded ? 'expand-icon--open' : ''}`} style={{ color: 'var(--text-muted)' }} />
+        </div>
       </div>
 
       {/* Patient name */}
@@ -156,6 +184,7 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
           
           {/* Extra Actions Row */}
           <div className="card-actions-row" style={{ marginTop: '4px' }}>
+
             <button className="card-btn" style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.1)' }} onClick={(e) => handleMarkStatus(e, 'postponed')}>⏸️ Hoãn mổ</button>
             <button className="card-btn" style={{ color: 'var(--error)', background: 'rgba(239,68,68,0.1)' }} onClick={(e) => handleMarkStatus(e, 'cancelled')}>🚫 Hủy ca</button>
             <button className="card-btn card-btn--delete" onClick={handleDelete} style={{ marginLeft: 'auto' }}>🗑️ Xóa khỏi bảng</button>
