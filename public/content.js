@@ -105,6 +105,42 @@ function extractHisPatientData(anchorNode) {
   return { maBA, hoTen, chanDoan, benhKemTheo, ngayNhapVien, gender, birth_year };
 }
 
+function extractRoomName(text) {
+  if (!text) return '';
+  const m = text.match(/(?:Buồng|Phòng|P\.)\s*([^)\s,]+)/i);
+  if (m) {
+      let name = m[1].trim();
+      const dvMatch = name.match(/^DV(\d+)$/i);
+      if (dvMatch) return dvMatch[1];
+      return name;
+  }
+  const parts = text.split(/[-/]/);
+  const lastPart = parts[parts.length - 1].replace(/[()]/g, '').trim();
+  return lastPart.length < 10 ? lastPart : lastPart.substring(0, 5);
+}
+
+function extractRoomFromDOM() {
+  const docs = getAccessibleDocuments();
+  for (const doc of docs) {
+    const walker = doc.createTreeWalker(doc.body || doc.documentElement, NodeFilter.SHOW_TEXT);
+    let node = walker.nextNode();
+    let prevText = '';
+    while (node) {
+      const text = normalizeText(node.nodeValue || '');
+      if (text.length > 0) {
+        if (/^giường\s*:?$/i.test(prevText) && /(?:buồng|phòng)/i.test(text)) {
+          return extractRoomName(text);
+        } else if (/^giường/i.test(text) && /(?:buồng|phòng)/i.test(text)) {
+          return extractRoomName(text);
+        }
+        prevText = text;
+      }
+      node = walker.nextNode();
+    }
+  }
+  return '';
+}
+
 function appendUniqueParts(base, additions) {
   const parts = String(base || '').split(';').map(part => normalizeText(part)).filter(Boolean);
   additions.flatMap(value => String(value || '').split(';')).forEach(value => {
@@ -408,6 +444,7 @@ function injectScheduleButtons() {
       
       const clickGender = currentData.gender || initialData.gender || '';
       const clickBirthYear = currentData.birth_year || initialData.birth_year || '';
+      const clickRoom = extractRoomFromDOM();
       
       const payload = {
         patient_id: clickMaBA,
@@ -416,7 +453,8 @@ function injectScheduleButtons() {
         admission_date: clickNgayNhapVien || null,
         priority: clickIsSurgical ? 'urgent' : 'elective',
         gender: clickGender,
-        birth_year: clickBirthYear
+        birth_year: clickBirthYear,
+        room: clickRoom
       };
 
       if (chrome && chrome.storage && chrome.storage.local) {

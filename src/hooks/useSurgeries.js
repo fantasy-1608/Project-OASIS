@@ -4,8 +4,8 @@ import { MOCK_SURGERIES, buildInitialBoardState } from '../lib/mockData';
 import { encryptSurgery, decryptSurgery, encryptFields } from '../lib/crypto';
 
 // ---- Pack/Unpack extra fields into DB `notes` column ----
-// DB chưa có cột surgical_method, admission_date → pack vào notes dưới dạng JSON
-const EXTRA_FIELDS = ['surgical_method', 'admission_date'];
+// DB chưa có cột surgical_method, admission_date, room → pack vào notes dưới dạng JSON
+const EXTRA_FIELDS = ['surgical_method', 'admission_date', 'room'];
 
 function packExtras(surgery) {
   const extras = {};

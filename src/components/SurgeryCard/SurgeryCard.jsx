@@ -1,6 +1,6 @@
 /* global chrome */
 import { useState, useCallback } from 'react';
-import { ChevronRight, CalendarDays, Clock, CheckCircle, Scissors, User, Calendar } from 'lucide-react';
+import { ChevronRight, CalendarDays, Clock, CheckCircle, Scissors, User, Calendar, Bed } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 
 const PRIORITY_CONFIG = {
@@ -110,6 +110,12 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
             <div className="card-info-tag card-info-tag--method">
               <span className="card-info-tag-icon"><Scissors size={12} /></span>
               <span>{surgery.surgical_method}</span>
+            </div>
+          )}
+          {surgery.room && (
+            <div className="card-info-tag card-info-tag--room">
+              <span className="card-info-tag-icon"><Bed size={12} /></span>
+              <span>Buồng: {surgery.room}</span>
             </div>
           )}
           {surgery.surgeon && (

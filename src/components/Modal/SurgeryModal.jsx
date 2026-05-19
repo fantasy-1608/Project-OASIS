@@ -10,6 +10,7 @@ const DEFAULT_FORM = {
   priority: 'elective',
   shift: 'morning',
   date: format(new Date(), 'yyyy-MM-dd'),
+  room: '',
   // Các field ẩn — giữ giá trị mặc định để không lỗi DB
   status: 'scheduled',
   order_in_shift: 999,
@@ -131,16 +132,28 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
             </div>
           </div>
 
-          {/* Mã bệnh nhân */}
-          <div className="form-field">
-            <label>Mã bệnh nhân / Mã BA</label>
-            <input
-              type="text"
-              className="form-input"
-              value={form.patient_id || ''}
-              onChange={e => set('patient_id', e.target.value)}
-              placeholder="VD: 24012345"
-            />
+          {/* Mã bệnh nhân và Buồng */}
+          <div className="form-grid-2">
+            <div className="form-field">
+              <label>Mã bệnh nhân / Mã BA</label>
+              <input
+                type="text"
+                className="form-input"
+                value={form.patient_id || ''}
+                onChange={e => set('patient_id', e.target.value)}
+                placeholder="VD: 24012345"
+              />
+            </div>
+            <div className="form-field">
+              <label>Buồng / Phòng</label>
+              <input
+                type="text"
+                className="form-input"
+                value={form.room || ''}
+                onChange={e => set('room', e.target.value)}
+                placeholder="VD: N"
+              />
+            </div>
           </div>
 
           {/* Chẩn đoán */}
