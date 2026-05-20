@@ -91,7 +91,7 @@ export function TableView({ boardState }) {
   }
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '16px', background: 'var(--bg-primary)' }}>
+    <div className="table-view-container" style={{ flex: 1, overflowY: 'auto', padding: '16px', background: 'var(--bg-primary)' }}>
       <div className="glass-panel" style={{ padding: '1px', overflowX: 'auto' }}>
         <div className="print-title">DANH SÁCH DỰ KIẾN MỔ</div>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
