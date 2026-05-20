@@ -94,16 +94,16 @@ export function TableView({ boardState }) {
     <div className="table-view-container" style={{ flex: 1, overflowY: 'auto', padding: '16px', background: 'var(--bg-primary)' }}>
       <div className="glass-panel" style={{ padding: '1px', overflowX: 'auto' }}>
         <div className="print-title">DANH SÁCH MỔ KHOA NGOẠI TK-CTCH</div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+        <table className="print-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
           <thead>
             <tr style={{ background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--border-subtle)' }}>
-              <th style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Ngày mổ</th>
-              <th style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Buổi</th>
-              <th style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Họ tên bệnh nhân</th>
-              <th style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)', textAlign: 'center' }}>Năm sinh</th>
-              <th style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)', textAlign: 'center' }}>Buồng</th>
-              <th style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Chẩn đoán / phẫu thuật dự kiến</th>
-              <th style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Ghi chú</th>
+              <th className="col-date" style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Ngày mổ</th>
+              <th className="col-shift" style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Buổi</th>
+              <th className="col-name" style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Họ tên bệnh nhân</th>
+              <th className="col-year" style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)', textAlign: 'center' }}>Năm sinh</th>
+              <th className="col-room" style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)', textAlign: 'center' }}>Buồng</th>
+              <th className="col-diagnosis" style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Chẩn đoán / phẫu thuật dự kiến</th>
+              <th className="col-notes" style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Ghi chú</th>
             </tr>
           </thead>
           <tbody>
@@ -118,6 +118,7 @@ export function TableView({ boardState }) {
                   {spans.dateSpan > 0 && (
                     <td
                       rowSpan={spans.dateSpan}
+                      className="col-date"
                       style={{
                         padding: '12px 16px',
                         color: 'var(--text-primary)',
@@ -137,6 +138,7 @@ export function TableView({ boardState }) {
                   {spans.shiftSpan > 0 && (
                     <td
                       rowSpan={spans.shiftSpan}
+                      className="col-shift"
                       style={{
                         padding: '12px 16px',
                         color: isMorning ? '#f59e0b' : '#d4a25a',
@@ -153,28 +155,28 @@ export function TableView({ boardState }) {
                   )}
 
                   {/* Họ tên bệnh nhân */}
-                  <td style={{ padding: '12px 16px', fontWeight: 'bold', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <td className="col-name" style={{ padding: '12px 16px', fontWeight: 'bold', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-subtle)' }}>
                     {task.patient_name}
                   </td>
 
                   {/* Năm sinh */}
-                  <td style={{ padding: '12px 16px', textAlign: 'center', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <td className="col-year" style={{ padding: '12px 16px', textAlign: 'center', borderBottom: '1px solid var(--border-subtle)' }}>
                     {task.birth_year || task.age || '---'}
                   </td>
 
                   {/* Buồng */}
-                  <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: '500', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-subtle)' }}>
-                    {task.room ? `P.${task.room}` : '---'}
+                  <td className="col-room" style={{ padding: '12px 16px', textAlign: 'center', fontWeight: '500', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-subtle)' }}>
+                    {task.room || '---'}
                   </td>
 
                   {/* Chẩn đoán / PT Dự kiến */}
-                  <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <td className="col-diagnosis" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
                     <div style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>{task.diagnosis}</div>
                     <div style={{ color: 'var(--accent-muted)', fontSize: '11px' }}>{task.surgical_method}</div>
                   </td>
 
                   {/* Ghi chú */}
-                  <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)' }}></td>
+                  <td className="col-notes" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)' }}></td>
                 </tr>
               );
             })}

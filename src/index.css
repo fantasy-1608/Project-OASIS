@@ -1104,6 +1104,7 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
     color: black !important;
     border: 1px solid #ddd !important;
     font-weight: bold !important;
+    padding: 8px 6px !important;
   }
   
   td {
@@ -1111,7 +1112,15 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
     color: black !important;
     border: 1px solid #ddd !important;
     font-weight: normal !important;
+    padding: 8px 6px !important;
   }
+
+  .col-date { width: 85px !important; text-align: center !important; }
+  .col-shift { width: 45px !important; text-align: center !important; }
+  .col-name { white-space: nowrap !important; }
+  .col-year { width: 55px !important; text-align: center !important; }
+  .col-room { width: 50px !important; text-align: center !important; }
+  .col-notes { width: 90px !important; }
   
   /* Đổi màu chữ cho dễ đọc khi in */
   *, *::before, *::after {
