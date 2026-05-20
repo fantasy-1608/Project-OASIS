@@ -1,5 +1,14 @@
 
 
+const formatDate = (dateStr) => {
+  if (!dateStr) return '---';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
+};
+
 export function TableView({ boardState }) {
   // Aggregate tasks from morning and afternoon
   const morningTasks = (boardState.columns['morning']?.taskIds || []).map(id => boardState.tasks[id]).filter(Boolean);
@@ -22,11 +31,11 @@ export function TableView({ boardState }) {
           <thead>
             <tr style={{ background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--border-subtle)' }}>
               <th style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>Buổi</th>
+              <th style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>Ngày mổ</th>
               <th style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>Ưu tiên</th>
               <th style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>Mã bệnh nhân</th>
               <th style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>Họ và tên</th>
               <th style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>Chẩn đoán / PT Dự kiến</th>
-              <th style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>Trạng thái</th>
             </tr>
           </thead>
           <tbody>
@@ -39,6 +48,7 @@ export function TableView({ boardState }) {
               return (
                 <tr key={task.id} style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}>
                   <td style={{ padding: '12px 16px', color: isMorning ? '#f59e0b' : '#d4a25a', fontWeight: 'bold' }}>{shiftLabel}</td>
+                  <td style={{ padding: '12px 16px', color: 'var(--text-primary)' }}>{formatDate(task.date)}</td>
                   <td style={{ padding: '12px 16px', color: priorityColor }}>{priorityLabel}</td>
                   <td style={{ padding: '12px 16px', fontFamily: 'monospace' }}>{task.patient_id || '---'}</td>
                   <td style={{ padding: '12px 16px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{task.patient_name}</td>
@@ -46,7 +56,6 @@ export function TableView({ boardState }) {
                     <div style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>{task.diagnosis}</div>
                     <div style={{ color: 'var(--accent-muted)', fontSize: '11px' }}>{task.surgical_method}</div>
                   </td>
-                  <td style={{ padding: '12px 16px' }}>Dự kiến</td>
                 </tr>
               );
             })}
