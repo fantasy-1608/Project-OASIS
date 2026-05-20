@@ -9,7 +9,13 @@ import CryptoJS from 'crypto-js';
 // - Mở rộng danh sách field nhạy cảm
 // ============================================================
 
-const SECRET_KEY = import.meta.env.VITE_CRYPTO_SECRET || 'CTCH';
+export function getSecretKey() {
+  if (typeof window !== 'undefined') {
+    const sessionKey = sessionStorage.getItem('OASIS_DECRYPTION_KEY');
+    if (sessionKey) return sessionKey;
+  }
+  return import.meta.env.VITE_CRYPTO_SECRET || 'CTCH';
+}
 
 // Legacy key cho backward compatibility (data đã encrypt trước Phase 1)
 const LEGACY_KEY = 'CTCH';
@@ -43,7 +49,8 @@ export const PHI_FIELDS = [
 export function encryptData(text) {
   if (!text) return text;
   try {
-    const key = CryptoJS.SHA256(SECRET_KEY);
+    const secretKey = getSecretKey();
+    const key = CryptoJS.SHA256(secretKey);
     const iv = CryptoJS.lib.WordArray.random(16);
     const encrypted = CryptoJS.AES.encrypt(String(text), key, {
       iv,
@@ -74,7 +81,8 @@ export function decryptData(encryptedText) {
     if (colonIdx === 32) {
       const ivHex = encryptedText.substring(0, 32);
       const ciphertext = encryptedText.substring(33);
-      const key = CryptoJS.SHA256(SECRET_KEY);
+      const secretKey = getSecretKey();
+      const key = CryptoJS.SHA256(secretKey);
       const iv = CryptoJS.enc.Hex.parse(ivHex);
       const bytes = CryptoJS.AES.decrypt(ciphertext, key, {
         iv,

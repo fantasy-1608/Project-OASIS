@@ -9,6 +9,9 @@ import { WeekCalendar } from './components/WeekCalendar/WeekCalendar';
 import { HistoryModal } from './components/Modal/HistoryModal';
 import { ToastContainer } from './components/Toast/Toast';
 import { useSurgeries } from './hooks/useSurgeries';
+import { useAuth } from './hooks/useAuth';
+import { LoginModal } from './components/Auth/LoginModal';
+import { isEnabled } from './lib/featureFlags';
 import { format } from 'date-fns';
 import './index.css';
 
@@ -24,13 +27,37 @@ function App() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [isDraggingGlobal, setIsDraggingGlobal] = useState(false);
   
-  // Phase 1, 2, 3 States
+  // Auth & Roles System
+  const {
+    user,
+    role,
+    displayName,
+    signOut,
+    can,
+    isAuthenticated,
+  } = useAuth();
+  
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
+
+  const isUnlockedEffective = useMemo(() => {
+    return isEnabled('AUTH_ENABLED')
+      ? (isAuthenticated && (can('canDrag') || can('canAdd') || can('canEdit') || can('canMarkStatus')))
+      : isUnlocked;
+  }, [isAuthenticated, can, isUnlocked]);
+
   const isUnlockedRef = useRef(false);
+  const isAuthenticatedRef = useRef(false);
+  const canAddRef = useRef(false);
   
   useEffect(() => {
-    isUnlockedRef.current = isUnlocked;
-  }, [isUnlocked]);
+    isUnlockedRef.current = isUnlockedEffective;
+  }, [isUnlockedEffective]);
+
+  useEffect(() => {
+    isAuthenticatedRef.current = isAuthenticated;
+    canAddRef.current = can('canAdd');
+  }, [isAuthenticated, can]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('board'); // 'board' | 'table'
@@ -72,14 +99,26 @@ function App() {
   useEffect(() => {
     const handleMessage = (msg) => {
       if (msg.type === 'OASIS_OPEN_ADD_SURGERY') {
-        if (!isUnlockedRef.current) {
-          const pwd = window.prompt('Nhập mã mở khóa để thêm dự kiến mổ:');
-          if (pwd === 'CTCH') {
-            setIsUnlocked(true);
-            showToast('success', 'Đã mở khóa!');
-          } else {
-            if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
+        if (isEnabled('AUTH_ENABLED')) {
+          if (!isAuthenticatedRef.current) {
+            setLoginModalOpen(true);
+            showToast('info', 'Vui lòng đăng nhập để thêm ca mổ từ extension.');
             return;
+          }
+          if (!canAddRef.current) {
+            showToast('error', 'Tài khoản của bạn không có quyền thêm ca mổ.');
+            return;
+          }
+        } else {
+          if (!isUnlockedRef.current) {
+            const pwd = window.prompt('Nhập mã mở khóa để thêm dự kiến mổ:');
+            if (pwd === 'CTCH') {
+              setIsUnlocked(true);
+              showToast('success', 'Đã mở khóa!');
+            } else {
+              if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
+              return;
+            }
           }
         }
         setEditingSurgery(msg.payload);
@@ -94,26 +133,39 @@ function App() {
       if (chrome.storage && chrome.storage.local) {
         chrome.storage.local.get(['oasis_pending_surgery'], (result) => {
           if (result.oasis_pending_surgery) {
-          if (!isUnlockedRef.current) {
-            const pwd = window.prompt('Nhập mã mở khóa để thêm dự kiến mổ:');
-            if (pwd === 'CTCH') {
-              setIsUnlocked(true);
-              showToast('success', 'Đã mở khóa!');
-              setEditingSurgery(result.oasis_pending_surgery);
-              setDefaultShift(result.oasis_pending_surgery.priority === 'urgent' ? 'morning' : 'waiting');
-              setModalOpen(true);
+            if (isEnabled('AUTH_ENABLED')) {
+              if (!isAuthenticatedRef.current) {
+                setLoginModalOpen(true);
+                showToast('info', 'Vui lòng đăng nhập để thêm ca mổ.');
+              } else if (!canAddRef.current) {
+                showToast('error', 'Tài khoản của bạn không có quyền thêm ca mổ.');
+              } else {
+                setEditingSurgery(result.oasis_pending_surgery);
+                setDefaultShift(result.oasis_pending_surgery.priority === 'urgent' ? 'morning' : 'waiting');
+                setModalOpen(true);
+              }
             } else {
-              if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
+              if (!isUnlockedRef.current) {
+                const pwd = window.prompt('Nhập mã mở khóa để thêm dự kiến mổ:');
+                if (pwd === 'CTCH') {
+                  setIsUnlocked(true);
+                  showToast('success', 'Đã mở khóa!');
+                  setEditingSurgery(result.oasis_pending_surgery);
+                  setDefaultShift(result.oasis_pending_surgery.priority === 'urgent' ? 'morning' : 'waiting');
+                  setModalOpen(true);
+                } else {
+                  if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
+                }
+              } else {
+                setEditingSurgery(result.oasis_pending_surgery);
+                setDefaultShift(result.oasis_pending_surgery.priority === 'urgent' ? 'morning' : 'waiting');
+                setModalOpen(true);
+              }
             }
-          } else {
-             setEditingSurgery(result.oasis_pending_surgery);
-             setDefaultShift(result.oasis_pending_surgery.priority === 'urgent' ? 'morning' : 'waiting');
-             setModalOpen(true);
+            // Xoá ngay sau khi load để không bị loop mở lại
+            chrome.storage.local.remove('oasis_pending_surgery');
           }
-          // Xoá ngay sau khi load để không bị loop mở lại
-          chrome.storage.local.remove('oasis_pending_surgery');
-        }
-      });
+        });
       } // closes if (chrome.storage && chrome.storage.local)
     } // closes if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage)
       
@@ -147,19 +199,28 @@ function App() {
 
   // --- Handlers ---
   const handleToggleLock = () => {
-    if (isUnlocked) {
-      setIsUnlocked(false);
-      showToast('info', 'Đã khóa chế độ chỉnh sửa');
+    if (isEnabled('AUTH_ENABLED')) {
+      if (isAuthenticated) {
+        signOut();
+        showToast('info', 'Đã đăng xuất tài khoản.');
+      } else {
+        setLoginModalOpen(true);
+      }
     } else {
-      const pwd = window.prompt('Nhập mã mở khóa:');
-      // NOTE: This hardcoded passcode is intentionally used as a basic safeguard
-      // to prevent accidental modifications by general users. It is NOT intended
-      // as a secure authentication mechanism. Do not flag as a security vulnerability.
-      if (pwd === 'CTCH') {
-        setIsUnlocked(true);
-        showToast('success', 'Đã mở khóa!');
-      } else if (pwd !== null) {
-        showToast('error', 'Mật khẩu không đúng!');
+      if (isUnlocked) {
+        setIsUnlocked(false);
+        showToast('info', 'Đã khóa chế độ chỉnh sửa');
+      } else {
+        const pwd = window.prompt('Nhập mã mở khóa:');
+        // NOTE: This hardcoded passcode is intentionally used as a basic safeguard
+        // to prevent accidental modifications by general users. It is NOT intended
+        // as a secure authentication mechanism. Do not flag as a security vulnerability.
+        if (pwd === 'CTCH') {
+          setIsUnlocked(true);
+          showToast('success', 'Đã mở khóa!');
+        } else if (pwd !== null) {
+          showToast('error', 'Mật khẩu không đúng!');
+        }
       }
     }
   };
@@ -175,6 +236,23 @@ function App() {
     const { destination, source, draggableId } = result;
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+
+    if (isEnabled('AUTH_ENABLED')) {
+      if (!can('canDrag')) {
+        if (!isAuthenticated) {
+          setLoginModalOpen(true);
+          showToast('info', 'Vui lòng đăng nhập để thay đổi lịch mổ.');
+        } else {
+          showToast('error', 'Tài khoản của bạn không có quyền thay đổi lịch mổ.');
+        }
+        return;
+      }
+    } else {
+      if (!isUnlocked) {
+        showToast('error', 'Vui lòng mở khóa chế độ chỉnh sửa trước.');
+        return;
+      }
+    }
 
     const surgery = boardState.tasks[draggableId];
     const targetShift = destination.droppableId;
@@ -203,34 +281,63 @@ function App() {
       const shiftLabel = targetShift === 'morning' ? 'Ca Sáng' : 'Ca Chiều';
       showToast('success', `✅ ${surgery?.patient_name} → ${shiftLabel}`);
     }
-  }, [boardState, moveSurgery, showToast]);
+  }, [boardState, moveSurgery, showToast, isAuthenticated, can, isUnlocked]);
 
   // ---- Modal handlers ----
-  const requireUnlock = useCallback(() => {
-    if (isUnlockedRef.current) return true;
-    const pwd = window.prompt('Nhập mã mở khóa để thêm/sửa dự kiến mổ:');
-    if (pwd === 'CTCH') {
-      setIsUnlocked(true);
-      showToast('success', 'Đã mở khóa!');
-      return true;
-    } else if (pwd !== null) {
-      showToast('error', 'Mật khẩu không đúng!');
-    }
-    return false;
-  }, [showToast]);
-
   const handleOpenAdd = useCallback((shift = 'morning') => {
-    if (!requireUnlock()) return;
+    if (isEnabled('AUTH_ENABLED')) {
+      if (!can('canAdd')) {
+        if (!isAuthenticated) {
+          setLoginModalOpen(true);
+          showToast('info', 'Vui lòng đăng nhập để thêm dự kiến mổ.');
+        } else {
+          showToast('error', 'Tài khoản của bạn không có quyền thêm ca mổ.');
+        }
+        return;
+      }
+    } else {
+      if (!isUnlocked) {
+        const pwd = window.prompt('Nhập mã mở khóa để thêm dự kiến mổ:');
+        if (pwd === 'CTCH') {
+          setIsUnlocked(true);
+          showToast('success', 'Đã mở khóa!');
+        } else {
+          if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
+          return;
+        }
+      }
+    }
     setEditingSurgery(null);
     setDefaultShift(shift);
     setModalOpen(true);
-  }, [requireUnlock]);
+  }, [isAuthenticated, can, isUnlocked, showToast]);
 
   const handleOpenEdit = useCallback((surgery) => {
-    if (!requireUnlock()) return;
+    if (isEnabled('AUTH_ENABLED')) {
+      if (!can('canEdit')) {
+        if (!isAuthenticated) {
+          setLoginModalOpen(true);
+          showToast('info', 'Vui lòng đăng nhập để sửa thông tin ca mổ.');
+        } else {
+          showToast('error', 'Tài khoản của bạn không có quyền sửa ca mổ.');
+        }
+        return;
+      }
+    } else {
+      if (!isUnlocked) {
+        const pwd = window.prompt('Nhập mã mở khóa để sửa thông tin ca mổ:');
+        if (pwd === 'CTCH') {
+          setIsUnlocked(true);
+          showToast('success', 'Đã mở khóa!');
+        } else {
+          if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
+          return;
+        }
+      }
+    }
     setEditingSurgery(surgery);
     setModalOpen(true);
-  }, [requireUnlock]);
+  }, [isAuthenticated, can, isUnlocked, showToast]);
 
   const handleSave = useCallback(async (formData) => {
     if (editingSurgery && editingSurgery.id) {
@@ -245,35 +352,120 @@ function App() {
   }, [editingSurgery, updateSurgery, addSurgery, dateStr, showToast]);
 
   const handleDelete = useCallback(async (id) => {
-    if (!requireUnlock()) return;
+    if (isEnabled('AUTH_ENABLED')) {
+      if (!can('canDelete')) {
+        if (!isAuthenticated) {
+          setLoginModalOpen(true);
+          showToast('info', 'Vui lòng đăng nhập để xóa ca mổ.');
+        } else {
+          showToast('error', 'Chỉ tài khoản Admin mới có quyền xóa ca mổ.');
+        }
+        return;
+      }
+    } else {
+      if (!isUnlocked) {
+        const pwd = window.prompt('Nhập mã mở khóa để xóa ca mổ:');
+        if (pwd === 'CTCH') {
+          setIsUnlocked(true);
+          showToast('success', 'Đã mở khóa!');
+        } else {
+          if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
+          return;
+        }
+      }
+    }
     const surgery = surgeries.find(s => s.id === id);
+    if (!window.confirm(`Xác nhận xóa ca mổ của bệnh nhân ${surgery?.patient_name || ''}?`)) return;
     const { error } = await deleteSurgery(id);
     if (error) showToast('error', `❌ Lỗi xoá: ${error}`);
     else showToast('info', `🗑️ Đã xoá khỏi bảng dự kiến: ${surgery?.patient_name || ''}`);
-  }, [surgeries, deleteSurgery, showToast, requireUnlock]);
+  }, [surgeries, deleteSurgery, showToast, isAuthenticated, can, isUnlocked]);
 
   // ---- Card quick actions ----
   const handleMoveToWaiting = useCallback(async (id) => {
-    if (!requireUnlock()) return;
+    if (isEnabled('AUTH_ENABLED')) {
+      if (!can('canEdit')) {
+        if (!isAuthenticated) {
+          setLoginModalOpen(true);
+          showToast('info', 'Vui lòng đăng nhập để thay đổi lịch mổ.');
+        } else {
+          showToast('error', 'Tài khoản của bạn không có quyền sửa ca mổ.');
+        }
+        return;
+      }
+    } else {
+      if (!isUnlocked) {
+        const pwd = window.prompt('Nhập mã mở khóa để thay đổi lịch mổ:');
+        if (pwd === 'CTCH') {
+          setIsUnlocked(true);
+          showToast('success', 'Đã mở khóa!');
+        } else {
+          if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
+          return;
+        }
+      }
+    }
     const surgery = surgeries.find(s => s.id === id);
     if (!window.confirm(`Xác nhận trả ${surgery?.patient_name || 'ca này'} về danh sách chờ?`)) return;
     const { error } = await updateSurgery(id, { shift: 'waiting', order_in_shift: 0 });
     if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
     else showToast('info', `🕐 ${surgery?.patient_name || ''} → Danh sách chờ`);
-  }, [surgeries, updateSurgery, showToast, requireUnlock]);
+  }, [surgeries, updateSurgery, showToast, isAuthenticated, can, isUnlocked]);
 
   const handleSchedule = useCallback(async (id, shift, date) => {
-    if (!requireUnlock()) return;
+    if (isEnabled('AUTH_ENABLED')) {
+      if (!can('canEdit')) {
+        if (!isAuthenticated) {
+          setLoginModalOpen(true);
+          showToast('info', 'Vui lòng đăng nhập để xếp lịch mổ.');
+        } else {
+          showToast('error', 'Tài khoản của bạn không có quyền xếp lịch mổ.');
+        }
+        return;
+      }
+    } else {
+      if (!isUnlocked) {
+        const pwd = window.prompt('Nhập mã mở khóa để xếp lịch mổ:');
+        if (pwd === 'CTCH') {
+          setIsUnlocked(true);
+          showToast('success', 'Đã mở khóa!');
+        } else {
+          if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
+          return;
+        }
+      }
+    }
     const surgery = surgeries.find(s => s.id === id);
     const shiftLabel = shift === 'morning' ? 'Ca Sáng' : 'Ca Chiều';
     if (!window.confirm(`Xác nhận xếp ${surgery?.patient_name || 'ca này'} vào ${shiftLabel} ngày ${date}?`)) return;
     const { error } = await updateSurgery(id, { shift, date, order_in_shift: 999 });
     if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
     else showToast('success', `📅 ${surgery?.patient_name || ''} → ${shiftLabel} ${date.slice(5)}`);
-  }, [surgeries, updateSurgery, showToast, requireUnlock]);
+  }, [surgeries, updateSurgery, showToast, isAuthenticated, can, isUnlocked]);
 
   const handleMarkStatus = useCallback(async (id, status) => {
-    if (!requireUnlock()) return;
+    if (isEnabled('AUTH_ENABLED')) {
+      if (!can('canEdit') && !can('canMarkStatus')) {
+        if (!isAuthenticated) {
+          setLoginModalOpen(true);
+          showToast('info', 'Vui lòng đăng nhập để cập nhật trạng thái ca mổ.');
+        } else {
+          showToast('error', 'Tài khoản của bạn không có quyền cập nhật trạng thái ca mổ.');
+        }
+        return;
+      }
+    } else {
+      if (!isUnlocked) {
+        const pwd = window.prompt('Nhập mã mở khóa để cập nhật trạng thái ca mổ:');
+        if (pwd === 'CTCH') {
+          setIsUnlocked(true);
+          showToast('success', 'Đã mở khóa!');
+        } else {
+          if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
+          return;
+        }
+      }
+    }
     const surgery = surgeries.find(s => s.id === id);
     const { error } = await updateSurgery(id, { status });
     if (error) {
@@ -284,7 +476,7 @@ function App() {
     if (status === 'completed') showToast('success', `✅ ${surgery?.patient_name || ''} — Đã mổ xong!`);
     else if (status === 'postponed') showToast('info', `⏸️ ${surgery?.patient_name || ''} — Đã hoãn dự kiến mổ!`);
     else if (status === 'cancelled') showToast('info', `🚫 ${surgery?.patient_name || ''} — Đã hủy dự kiến mổ!`);
-  }, [surgeries, updateSurgery, showToast, requireUnlock]);
+  }, [surgeries, updateSurgery, showToast, isAuthenticated, can, isUnlocked]);
 
   // Connection toast
   useEffect(() => {
@@ -348,17 +540,21 @@ function App() {
         currentDate={currentDate}
         onDateChange={setCurrentDate}
         isOnline={isOnline}
-        onAddNew={isUnlocked ? () => handleOpenAdd() : null}
+        onAddNew={isUnlockedEffective ? () => handleOpenAdd() : null}
         onRefresh={refresh}
         totalCases={Object.keys(boardState.tasks).length}
         onOpenCalendar={() => setCalendarOpen(true)}
         onOpenHistory={() => setShowHistory(true)}
-        isUnlocked={isUnlocked}
+        isUnlocked={isUnlockedEffective}
         onToggleLock={handleToggleLock}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
+        user={user}
+        role={role}
+        displayName={displayName}
+        isAuthenticated={isAuthenticated}
       />
 
       {/* Main Board */}
@@ -412,7 +608,7 @@ function App() {
                 onMoveToWaiting={handleMoveToWaiting}
                 onSchedule={handleSchedule}
                 onMarkStatus={handleMarkStatus}
-                isUnlocked={isUnlocked}
+                isUnlocked={isUnlockedEffective}
               />
             )}
           </DragDropContext>
@@ -457,6 +653,12 @@ function App() {
 
       {/* Toast */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Login Modal */}
+      <LoginModal 
+        isOpen={loginModalOpen} 
+        onClose={() => setLoginModalOpen(false)} 
+      />
     </div>
   );
 }

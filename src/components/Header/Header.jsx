@@ -10,7 +10,28 @@ function formatDateLabel(date) {
   return format(date, 'dd/MM/yyyy');
 }
 
-export function Header({ currentDate, onDateChange, isOnline, onAddNew, onRefresh, totalCases, onOpenCalendar, onOpenHistory, isUnlocked, onToggleLock, searchQuery, onSearchChange, viewMode, onViewModeChange }) {
+import { isEnabled } from '../../lib/featureFlags';
+
+export function Header({ 
+  currentDate, 
+  onDateChange, 
+  isOnline, 
+  onAddNew, 
+  onRefresh, 
+  totalCases, 
+  onOpenCalendar, 
+  onOpenHistory, 
+  isUnlocked, 
+  onToggleLock, 
+  searchQuery, 
+  onSearchChange, 
+  viewMode, 
+  onViewModeChange,
+  user,
+  role,
+  displayName,
+  isAuthenticated
+}) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -27,6 +48,17 @@ export function Header({ currentDate, onDateChange, isOnline, onAddNew, onRefres
   const todayLabel = formatDateLabel(currentDate);
   const weekday = format(currentDate, 'EEEE', { locale: vi });
   const fullDate = format(currentDate, 'dd MMMM yyyy', { locale: vi });
+
+  // Map Vietnamese role name for display
+  const getRoleLabel = (r) => {
+    const maps = {
+      admin: 'Quản trị viên',
+      scheduler: 'Điều phối viên',
+      nurse: 'Điều dưỡng',
+      viewer: 'Chỉ xem'
+    };
+    return maps[r] || r;
+  };
 
   return (
     <header className="app-header">
@@ -90,8 +122,72 @@ export function Header({ currentDate, onDateChange, isOnline, onAddNew, onRefres
           {viewMode === 'board' ? <List size={16} /> : <LayoutDashboard size={16} />}
         </button>
 
-        <button className="icon-btn" onClick={onToggleLock} title={isUnlocked ? 'Đang mở khóa' : 'Đang khóa (Chỉ xem)'} style={{ color: isUnlocked ? '#10b981' : 'var(--text-muted)' }}>
-          {isUnlocked ? <Unlock size={16} /> : <Lock size={16} />}
+        {/* User Profile Badge (Auth Mode Only) */}
+        {isEnabled('AUTH_ENABLED') && isAuthenticated && user && (
+          <div className="user-profile-badge" style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            background: 'rgba(255, 255, 255, 0.06)', 
+            padding: '3px 10px', 
+            borderRadius: '20px', 
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            transition: 'all 0.3s ease'
+          }}>
+            <div className="user-avatar" style={{ 
+              width: '24px', 
+              height: '24px', 
+              borderRadius: '50%', 
+              background: 'linear-gradient(135deg, #a855f7, #6366f1)', 
+              color: 'white', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              fontSize: '11px', 
+              fontWeight: '700', 
+              textTransform: 'uppercase',
+              boxShadow: '0 0 8px rgba(168, 85, 247, 0.4)'
+            }}>
+              {displayName ? displayName.charAt(0) : (user.email ? user.email.charAt(0) : 'U')}
+            </div>
+            <div className="user-info" style={{ display: 'flex', flexDirection: 'column', gap: '0px', textAlign: 'left' }}>
+              <span className="user-name" style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-primary)', lineHeight: '1.2', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {displayName || user.email.split('@')[0]}
+              </span>
+              <span className="user-role" style={{ fontSize: '8px', textTransform: 'uppercase', color: '#cbd5e1', fontWeight: '500', opacity: 0.8, letterSpacing: '0.3px', lineHeight: '1' }}>
+                {getRoleLabel(role)}
+              </span>
+            </div>
+          </div>
+        )}
+
+        <button 
+          className="icon-btn" 
+          onClick={onToggleLock} 
+          title={
+            isEnabled('AUTH_ENABLED')
+              ? (isAuthenticated ? `Đã đăng nhập: ${displayName || user?.email} (Đăng xuất)` : 'Đăng nhập hệ thống')
+              : (isUnlocked ? 'Đang mở khóa' : 'Đang khóa (Chỉ xem)')
+          } 
+          style={{ 
+            color: isEnabled('AUTH_ENABLED')
+              ? (isAuthenticated ? '#a855f7' : 'var(--text-muted)')
+              : (isUnlocked ? '#10b981' : 'var(--text-muted)'),
+            border: isEnabled('AUTH_ENABLED') && isAuthenticated ? '1px solid rgba(168, 85, 247, 0.3)' : 'none',
+            borderRadius: '50%',
+            background: isEnabled('AUTH_ENABLED') && isAuthenticated ? 'rgba(168, 85, 247, 0.05)' : 'transparent',
+            width: '32px',
+            height: '32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          {isEnabled('AUTH_ENABLED')
+            ? (isAuthenticated ? <Unlock size={15} /> : <Lock size={15} />)
+            : (isUnlocked ? <Unlock size={16} /> : <Lock size={16} />)
+          }
         </button>
 
         <button className="icon-btn" onClick={handleRefresh} title="Tải lại">
