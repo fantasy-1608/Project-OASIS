@@ -33,7 +33,7 @@ export const FEATURES = {
    * Khi true: mọi thao tác add/update/delete/move sẽ ghi vào bảng surgery_audit_log.
    * Yêu cầu: đã chạy migration 003_audit_log.sql.
    */
-  AUDIT_LOG_ENABLED: true,
+  AUDIT_LOG_ENABLED: false,
 
   /**
    * AUTH_ENABLED
@@ -42,7 +42,7 @@ export const FEATURES = {
    * Yêu cầu: đã chạy migration 002_auth_and_roles.sql.
    * CẢNH BÁO: Breaking change với App.jsx — test kỹ trước khi bật.
    */
-  AUTH_ENABLED: true,
+  AUTH_ENABLED: false,
 
   // ----------------------------------------------------------
   // GIAI ĐOẠN 2 — Scheduling Engine
