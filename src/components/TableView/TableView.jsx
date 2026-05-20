@@ -93,16 +93,17 @@ export function TableView({ boardState }) {
   return (
     <div className="table-view-container" style={{ flex: 1, overflowY: 'auto', padding: '16px', background: 'var(--bg-primary)' }}>
       <div className="glass-panel" style={{ padding: '1px', overflowX: 'auto' }}>
-        <div className="print-title">DANH SÁCH DỰ KIẾN MỔ</div>
+        <div className="print-title">DANH SÁCH MỔ KHOA NGOẠI TK-CTCH</div>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
           <thead>
             <tr style={{ background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--border-subtle)' }}>
               <th style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Ngày mổ</th>
               <th style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Buổi</th>
-              <th style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Ưu tiên</th>
-              <th style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Mã bệnh nhân</th>
-              <th style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Họ và tên</th>
-              <th style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Chẩn đoán / PT Dự kiến</th>
+              <th style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Họ tên bệnh nhân</th>
+              <th style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)', textAlign: 'center' }}>Năm sinh</th>
+              <th style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)', textAlign: 'center' }}>Buồng</th>
+              <th style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Chẩn đoán / phẫu thuật dự kiến</th>
+              <th style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Ghi chú</th>
             </tr>
           </thead>
           <tbody>
@@ -110,8 +111,6 @@ export function TableView({ boardState }) {
               const spans = rowSpans[idx] || { dateSpan: 1, shiftSpan: 1 };
               const isMorning = task.shift === 'morning';
               const shiftLabel = isMorning ? 'Sáng' : 'Chiều';
-              const priorityColor = task.priority === 'emergency' ? 'var(--error)' : task.priority === 'urgent' ? '#f59e0b' : 'var(--text-muted)';
-              const priorityLabel = task.priority === 'emergency' ? 'Cấp cứu' : task.priority === 'urgent' ? 'Bán cấp' : 'Chương trình';
               
               return (
                 <tr key={task.id} style={{ background: 'var(--bg-card)' }}>
@@ -153,19 +152,19 @@ export function TableView({ boardState }) {
                     </td>
                   )}
 
-                  {/* Ưu tiên */}
-                  <td style={{ padding: '12px 16px', color: priorityColor, borderBottom: '1px solid var(--border-subtle)' }}>
-                    {priorityLabel}
-                  </td>
-
-                  {/* Mã bệnh nhân */}
-                  <td style={{ padding: '12px 16px', fontFamily: 'monospace', borderBottom: '1px solid var(--border-subtle)' }}>
-                    {task.patient_id || '---'}
-                  </td>
-
-                  {/* Họ và tên */}
+                  {/* Họ tên bệnh nhân */}
                   <td style={{ padding: '12px 16px', fontWeight: 'bold', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-subtle)' }}>
                     {task.patient_name}
+                  </td>
+
+                  {/* Năm sinh */}
+                  <td style={{ padding: '12px 16px', textAlign: 'center', borderBottom: '1px solid var(--border-subtle)' }}>
+                    {task.birth_year || task.age || '---'}
+                  </td>
+
+                  {/* Buồng */}
+                  <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: '500', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-subtle)' }}>
+                    {task.room ? `P.${task.room}` : '---'}
                   </td>
 
                   {/* Chẩn đoán / PT Dự kiến */}
@@ -173,6 +172,9 @@ export function TableView({ boardState }) {
                     <div style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>{task.diagnosis}</div>
                     <div style={{ color: 'var(--accent-muted)', fontSize: '11px' }}>{task.surgical_method}</div>
                   </td>
+
+                  {/* Ghi chú */}
+                  <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)' }}></td>
                 </tr>
               );
             })}

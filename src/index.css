@@ -1028,6 +1028,11 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 
 /* ===================== PRINT STYLES ===================== */
 @media print {
+  @page {
+    size: auto;
+    margin: 12mm 15mm;
+  }
+
   body {
     background: white !important;
     color: black !important;
