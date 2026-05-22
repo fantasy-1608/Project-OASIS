@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.2.2] - 2026-05-22
+
+### Added
+- **Lịch mổ tuần nâng cao**: Tích hợp màn hình thống kê (stats dashboard) và hiển thị các ca mổ dưới dạng thẻ thu nhỏ (micro-cards) tối ưu không gian hiển thị.
+- **Tối ưu hóa In ấn (TableView Print)**:
+  - Tự động gom nhóm các ca mổ trùng ngày hoặc trùng kíp mổ (shift) đẹp mắt.
+  - Chuyển cột Ngày lên vị trí đầu tiên giúp dễ theo dõi.
+  - Tối ưu hóa chiều rộng bảng in, hiển thị tên bệnh nhân gọn gàng trên 1 dòng.
+  - Ẩn triệt để thanh tiêu đề và chân trang của trình duyệt khi in.
+  - Loại bỏ tiền tố phòng mổ dư thừa và tối ưu hóa phối màu tiết kiệm mực in.
+- **CTCH Auth Bypass**: Tích hợp tùy chọn bỏ qua xác thực Supabase để tự động bypass password-less phù hợp với phòng mổ CTCH.
+
+## [1.2.1] - 2026-05-20
+
+### Added
+- **Nâng cấp bảo mật phân quyền (RBAC)**: Tách biệt vai trò bác sĩ và điều dưỡng rõ ràng.
+- **Mã hóa PHI nâng cao**: Tăng cường bảo mật khóa giải mã thông tin định danh bệnh nhân.
+
+### Fixed
+- Sửa lỗi linter (biến chưa sử dụng) trong file `content.js`.
+
+## [1.2.0] - 2026-05-18
+
+### Added
+- **Tích hợp thông tin phòng mổ**: Thêm trường Phòng mổ (`room`) trong hộp thoại thêm/sửa ca mổ và tự động hiển thị trên thẻ ca mổ.
+- **Đồng bộ 2 chiều nâng cao**: Tự động giả lập thao tác gõ phím khi lọc bảng dữ liệu trên giao diện VNPT HIS để tăng độ tin cậy.
+- **Release Automation Script**: Thêm tập lệnh đóng gói zip tự động thông qua `pnpm run release`.
+
+## [1.1.6] - 2026-05-09
+
+### Added
+- **Tự động trích xuất năm sinh**: Nhận diện và trích xuất năm sinh của bệnh nhân từ HIS để hiển thị rõ ràng trên thẻ mổ, giảm thiểu tối đa rủi ro nhầm lẫn giữa các bệnh nhân trùng tên.
+- **Khung giao diện v2**: Chuẩn bị hạ tầng cho các mô hình nâng cấp tiếp theo.
+
 ## [1.1.5] - 2026-05-09
 ### Added
 - Tích hợp GitNexus cho code intelligence và phân tích ảnh hưởng (impact analysis).
