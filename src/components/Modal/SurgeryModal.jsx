@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { X, Save } from 'lucide-react';
 import { format, addDays } from 'date-fns';
+import {
+  READINESS_ITEMS,
+  createDefaultManualReadiness,
+  evaluateSurgeryReadiness,
+  formatReadinessMissingText,
+  normalizeManualReadiness,
+} from '../../lib/readiness';
 
 const DEFAULT_FORM = {
   patient_name: '',
@@ -14,6 +21,7 @@ const DEFAULT_FORM = {
   // Các field ẩn — giữ giá trị mặc định để không lỗi DB
   status: 'scheduled',
   order_in_shift: 999,
+  readiness_manual: createDefaultManualReadiness(),
 };
 
 function generatePatientId() {
@@ -34,13 +42,18 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
     setPrevInitialData(initialData);
     if (isOpen) {
       if (initialData) {
-        setForm({ ...DEFAULT_FORM, ...initialData });
+        setForm({
+          ...DEFAULT_FORM,
+          ...initialData,
+          readiness_manual: normalizeManualReadiness(initialData.readiness_manual),
+        });
       } else {
         setForm({
           ...DEFAULT_FORM,
           shift: defaultShift || 'morning',
           date: currentDate || format(new Date(), 'yyyy-MM-dd'),
           patient_id: generatePatientId(),
+          readiness_manual: createDefaultManualReadiness(),
         });
       }
       setErrors({});
@@ -50,6 +63,57 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
   if (!isOpen) return null;
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
+  const manualReadiness = normalizeManualReadiness(form.readiness_manual);
+  const readinessSummary = evaluateSurgeryReadiness({
+    readiness_manual: manualReadiness,
+    readiness_auto: form.readiness_auto,
+  });
+  const missingReadinessText = formatReadinessMissingText(readinessSummary, 4);
+
+  const setManualReadiness = (updater) => {
+    setForm(prev => {
+      const nextManual = updater(normalizeManualReadiness(prev.readiness_manual));
+      return {
+        ...prev,
+        readiness_manual: {
+          ...nextManual,
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    });
+  };
+
+  const toggleReadinessItem = (itemId) => {
+    setManualReadiness(current => ({
+      ...current,
+      checked: {
+        ...current.checked,
+        [itemId]: !current.checked[itemId],
+      },
+    }));
+  };
+
+  const setRegionalXray = (value) => {
+    setManualReadiness(current => ({
+      ...current,
+      regionalXray: value,
+      regionalXrayDone: value.trim() ? current.regionalXrayDone : false,
+    }));
+  };
+
+  const setRegionalXrayDone = () => {
+    setManualReadiness(current => ({
+      ...current,
+      regionalXrayDone: !current.regionalXrayDone,
+    }));
+  };
+
+  const formatCheckedAt = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  };
 
   const validate = () => {
     const e = {};
@@ -68,6 +132,7 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
       patient_id: form.patient_id || generatePatientId(),
       surgeon_id: form.surgeon_id || null,
       room_id: form.room_id || null,
+      readiness_manual: normalizeManualReadiness(form.readiness_manual),
     });
     setIsSaving(false);
     onClose();
@@ -82,7 +147,7 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <form className="modal-panel glass-panel" style={{ maxWidth: '460px' }} onSubmit={handleSubmit}>
+      <form className="modal-panel glass-panel" style={{ maxWidth: '620px' }} onSubmit={handleSubmit}>
         {/* Header */}
         <div className="modal-header">
           <div>
@@ -191,6 +256,54 @@ export function SurgeryModal({ isOpen, onClose, onSave, initialData, defaultShif
               readOnly
               style={{ opacity: 0.7, cursor: 'default' }}
             />
+          </div>
+
+          <div className="form-section readiness-section">
+            <div className="form-section-title">Sẵn sàng hồ sơ</div>
+            <div className={`readiness-summary readiness-summary--${readinessSummary.status}`}>
+              <span className="readiness-summary-label">{readinessSummary.label}</span>
+              {readinessSummary.status === 'missing' && missingReadinessText && (
+                <span className="readiness-summary-missing">{missingReadinessText}</span>
+              )}
+              {readinessSummary.checkedAt && (
+                <span className="readiness-summary-time">HIS {formatCheckedAt(readinessSummary.checkedAt)}</span>
+              )}
+            </div>
+
+            <div className="readiness-checklist">
+              {READINESS_ITEMS.map(item => (
+                <label key={item.id} className="readiness-check-row">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(manualReadiness.checked[item.id])}
+                    onChange={() => toggleReadinessItem(item.id)}
+                  />
+                  <span>{item.label}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className="readiness-regional-row">
+              <div className="form-field">
+                <label>X-quang vùng riêng</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={manualReadiness.regionalXray}
+                  onChange={e => setRegionalXray(e.target.value)}
+                  placeholder="VD: cột sống, khớp háng, gối, cổ chân"
+                />
+              </div>
+              <label className={`readiness-check-row readiness-check-row--regional ${manualReadiness.regionalXray ? '' : 'readiness-check-row--disabled'}`}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(manualReadiness.regionalXrayDone)}
+                  onChange={setRegionalXrayDone}
+                  disabled={!manualReadiness.regionalXray}
+                />
+                <span>Đã có</span>
+              </label>
+            </div>
           </div>
 
           {/* Ưu tiên */}

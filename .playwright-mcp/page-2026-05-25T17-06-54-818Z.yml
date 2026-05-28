@@ -1,0 +1,80 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: 🧞
+      - generic [ref=e7]:
+        - generic [ref=e8]: Aladinn OASIS
+        - generic [ref=e9]: Bảng dự kiến mổ nội bộ
+    - generic [ref=e10]:
+      - button [ref=e11] [cursor=pointer]:
+        - img [ref=e12]
+      - generic [ref=e14]:
+        - generic [ref=e15]: Hôm nay
+        - generic [ref=e16]: Thứ Ba, 26 tháng 05 2026
+      - button [ref=e17] [cursor=pointer]:
+        - img [ref=e18]
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - img [ref=e22]
+        - generic [ref=e26]: Dữ liệu khoa
+      - generic [ref=e27]:
+        - generic [ref=e28]: "1"
+        - generic [ref=e29]: ca
+      - generic [ref=e30]:
+        - img [ref=e31]
+        - textbox "Tìm tên, mã BN..." [ref=e34]
+      - button "Chế độ bảng" [ref=e35] [cursor=pointer]:
+        - img [ref=e36]
+      - button "Đang mở khóa" [ref=e137] [cursor=pointer]:
+        - img [ref=e138]
+      - button "Tải lại" [ref=e41] [cursor=pointer]:
+        - img [ref=e42]
+      - button "Kho lưu trữ dự kiến mổ" [ref=e47] [cursor=pointer]:
+        - img [ref=e48]
+      - button "Lịch tuần" [ref=e52] [cursor=pointer]:
+        - img [ref=e53]
+      - button "Thêm dự kiến" [ref=e141] [cursor=pointer]:
+        - img [ref=e142]
+        - text: Thêm dự kiến
+  - generic [ref=e78]:
+    - generic [ref=e79]:
+      - generic [ref=e80]:
+        - generic [ref=e81]:
+          - generic [ref=e82]: 📋
+          - generic [ref=e83]: Danh sách chờ
+        - generic [ref=e84]: 0 ca
+      - generic [ref=e86]:
+        - generic [ref=e87]: 📝
+        - generic [ref=e88]: Chưa có ca nào
+      - button "Thêm dự kiến" [ref=e143] [cursor=pointer]:
+        - img [ref=e144]
+        - text: Thêm dự kiến
+    - generic [ref=e89]:
+      - generic [ref=e90]:
+        - generic [ref=e91]:
+          - generic [ref=e92]:
+            - img [ref=e94]
+            - generic [ref=e99]:
+              - generic [ref=e100]: Ca Sáng
+              - generic [ref=e101]: 07:30 – 11:30
+          - generic [ref=e102]:
+            - generic [ref=e103]: 0 ca
+            - button "Thêm dự kiến mổ" [ref=e145] [cursor=pointer]:
+              - img [ref=e146]
+        - generic [ref=e105]:
+          - img [ref=e107]
+          - generic [ref=e112]: Kéo dự kiến mổ vào đây
+      - generic [ref=e113]:
+        - generic [ref=e114]:
+          - generic [ref=e115]:
+            - img [ref=e117]
+            - generic [ref=e122]:
+              - generic [ref=e123]: Ca Chiều
+              - generic [ref=e124]: 13:30 – 17:00
+          - generic [ref=e125]:
+            - generic [ref=e126]: 0 ca
+            - button "Thêm dự kiến mổ" [ref=e147] [cursor=pointer]:
+              - img [ref=e148]
+        - generic [ref=e128]:
+          - img [ref=e130]
+          - generic [ref=e135]: Kéo dự kiến mổ vào đây

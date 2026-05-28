@@ -2,6 +2,7 @@
 import { useState, useCallback } from 'react';
 import { ChevronRight, CalendarDays, Clock, CheckCircle, Scissors, User, Calendar, Bed } from 'lucide-react';
 import { format, addDays } from 'date-fns';
+import { evaluateSurgeryReadiness, formatReadinessMissingText } from '../../lib/readiness';
 
 const PRIORITY_CONFIG = {
   emergency: { label: 'Cấp cứu', color: '#ef4444', bg: 'rgba(239,68,68,0.15)', border: 'rgba(239,68,68,0.4)' },
@@ -15,6 +16,8 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
   const isExtension = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
   const priority = PRIORITY_CONFIG[surgery.priority] || PRIORITY_CONFIG.elective;
   const isWaiting = surgery.shift === 'waiting';
+  const readiness = evaluateSurgeryReadiness(surgery);
+  const readinessMissingText = readiness.status === 'missing' ? formatReadinessMissingText(readiness, 5) : '';
 
   const handleEdit = useCallback((e) => { e.stopPropagation(); onEdit?.(surgery); }, [surgery, onEdit]);
   const handleDelete = useCallback((e) => {
@@ -80,9 +83,12 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
     >
       {/* Priority badge + shift info + expand icon */}
       <div className="card-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div className="card-badge-row">
           <span className="priority-badge" style={{ color: priority.color, background: priority.bg, border: `1px solid ${priority.border}` }}>
             {priority.label}
+          </span>
+          <span className={`readiness-badge readiness-badge--${readiness.status}`}>
+            {readiness.status === 'missing' ? `Thiếu ${readiness.missingItems.length}` : readiness.label}
           </span>
           {!isWaiting && surgery.date && (
             <span style={{ fontSize: '10px', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)', padding: '1px 6px', borderRadius: '4px' }}>
@@ -164,6 +170,16 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
       {/* Expanded: Actions */}
       {isExpanded && onEdit && (
         <div className="card-expanded-actions">
+          <div className={`card-readiness-detail card-readiness-detail--${readiness.status}`}>
+            <div className="card-readiness-top">
+              <span className="card-readiness-title">{readiness.label}</span>
+              <span className="card-readiness-count">{readiness.completedRequired}/{readiness.totalRequired}</span>
+            </div>
+            {readinessMissingText && (
+              <div className="card-readiness-missing">Thiếu: {readinessMissingText}</div>
+            )}
+          </div>
+
           {/* Quick action buttons */}
           <div className="card-actions-row">
             <button className="card-btn card-btn--edit" onClick={handleEdit}>✏️ Sửa</button>

@@ -135,8 +135,8 @@
     if (!mauBenhPhamId || !window.jsonrpc.AjaxJson || !window.jsonrpc.AjaxJson.ajaxCALL_SP_O) return [];
     try {
       return parseDetailRecords(window.jsonrpc.AjaxJson.ajaxCALL_SP_O('NT.024.2.DETAIL', String(mauBenhPhamId), 0));
-    } catch (e) {
-      console.error('[OASIS API] DETAIL error:', e);
+    } catch (_e) {
+      console.error('[OASIS API] DETAIL error');
       return [];
     }
   };
@@ -224,8 +224,8 @@
         ]);
         if (String(rowMaBA).trim() === String(maBA).trim()) return row;
       }
-    } catch (e) {
-      console.warn('[OASIS API] Cannot scan jqGrid rows:', e);
+    } catch (_e) {
+      console.warn('[OASIS API] Cannot scan jqGrid rows');
     }
     return {};
   };
@@ -236,8 +236,8 @@
       var selRow = grid.jqGrid('getGridParam', 'selrow');
       var rowData = selRow ? grid.jqGrid('getRowData', selRow) : {};
       if (rowData && Object.keys(rowData).length) return rowData;
-    } catch (e) {
-      console.warn('[OASIS API] Cannot read selected jqGrid row:', e);
+    } catch (_e) {
+      console.warn('[OASIS API] Cannot read selected jqGrid row');
     }
     return findGridRowByPatientCode(grid, maBA);
   };
@@ -256,6 +256,11 @@
       ]) ||
         readDomValue(['#HOSOBENHANID', '[name="HOSOBENHANID"]']) ||
         firstWindowValue(['hosobenhanId', 'HOSOBENHANID']),
+      tiepnhanId: firstExisting(rowData, [
+        'TIEPNHANID', 'TIEP_NHAN_ID', 'MA_TIEP_NHAN_ID', 'MATIEPNHANID'
+      ]) ||
+        readDomValue(['#TIEPNHANID', '[name="TIEPNHANID"]']) ||
+        firstWindowValue(['tiepnhanId', 'TIEPNHANID']),
       khambenhId: firstExisting(rowData, [
         'HOSOBENHANID', 'HOSO_BENHAN_ID', 'HOSOBAID', 'HO_SO_BA_ID',
         'TIEPNHANID', 'TIEP_NHAN_ID', 'KHAMBENHID', 'KHAM_BENH_ID',
@@ -375,30 +380,303 @@
                   ]) || firstTextAfterLabel(detailRecords, /^(bệnh kèm theo|chẩn đoán kèm theo|icd kèm theo|bệnh phụ)\s*:?/i);
                 }
 
-                console.log('[OASIS API] Latest treatment diagnosis:', {
-                  mauBenhPhamId: latestSheet.MAUBENHPHAMID,
-                  cd: result.cd,
-                  bkt: result.bkt,
-                  rowKeys: Object.keys(latestSheet || {}),
-                  detailCount: detailRecords.length
-                });
-
                 resolve(result);
-              } catch (parseError) {
-                console.error('[OASIS API] DSPHIEU parse error:', parseError);
+              } catch (_parseError) {
+                console.error('[OASIS API] DSPHIEU parse error');
                 resolve(result);
               }
             } else {
-              console.warn('[OASIS API] DSPHIEU status:', xhr.status, xhr.responseText);
+              console.warn('[OASIS API] DSPHIEU status:', xhr.status);
               resolve(result);
             }
           }
         };
         xhr.send(null);
-      } catch (e) {
-        console.error('[OASIS API] DSPHIEU error:', e);
+      } catch (_e) {
+        console.error('[OASIS API] DSPHIEU error');
         resolve(result);
       }
+    });
+  };
+
+  var READINESS_REQUIRED_ITEMS = [
+    { id: 'cbc', label: 'Công thức máu' },
+    { id: 'biochemistry', label: 'Sinh hóa máu' },
+    { id: 'urine', label: 'Tổng phân tích nước tiểu' },
+    { id: 'chest_xray', label: 'X-quang ngực thẳng' },
+    { id: 'abdominal_ultrasound', label: 'Siêu âm bụng' },
+    { id: 'ecg', label: 'ECG' },
+    { id: 'consultation', label: 'Hội chẩn gây mê/hội chẩn cần thiết' },
+    { id: 'surgery_consent', label: 'Cam đoan mổ' },
+    { id: 'anesthesia_consent', label: 'Cam đoan gây mê' }
+  ];
+
+  var READINESS_TEXT_KEYS = [
+    'TENXETNGHIEM',
+    'TENDICHVU_CHA',
+    'LOAIXETNGHIEM',
+    'TENDICHVU',
+    'TEN_DICHVU',
+    'TEN_DICHVU_KYTHUAT',
+    'TENLOAICHIDINH',
+    'TEN',
+    'TENCHISO',
+    'TENCHITIET',
+    'TENCHIDINH',
+    'TENTONGHOP',
+    'TENMAUBENHPHAM',
+    'TENPHIEU',
+    'TEN_PHIEU',
+    'LOAIPHIEU',
+    'NHOMDICHVU',
+    'TENNHOM',
+    'MADICHVU',
+    'MA'
+  ];
+
+  var normalizeSearchText = function(value) {
+    return stripHtml(value)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  var containsSearchTerm = function(text, term) {
+    var normalizedTerm = normalizeSearchText(term);
+    return Boolean(normalizedTerm) && text.indexOf(normalizedTerm) !== -1;
+  };
+
+  var containsWholeSearchTerm = function(text, term) {
+    var normalizedTerm = normalizeSearchText(term);
+    if (!normalizedTerm) return false;
+    return (' ' + text + ' ').indexOf(' ' + normalizedTerm + ' ') !== -1;
+  };
+
+  var collectReadinessSearchText = function(rows) {
+    var parts = [];
+    (rows || []).forEach(function(row) {
+      if (!row) return;
+      READINESS_TEXT_KEYS.forEach(function(key) {
+        var value = firstExisting(row, [key]);
+        if (valueLooksPresent(value)) parts.push(value);
+      });
+    });
+    return normalizeSearchText(parts.join(' '));
+  };
+
+  var extractPagingRows = function(payload) {
+    if (!payload) return [];
+    if (typeof payload === 'string') {
+      try {
+        payload = JSON.parse(payload);
+      } catch (_e) {
+        return [];
+      }
+    }
+    if (Array.isArray(payload)) return payload.filter(Boolean);
+    if (Array.isArray(payload.rows)) return payload.rows.filter(Boolean);
+    if (payload.result) return extractPagingRows(payload.result);
+    return [];
+  };
+
+  var fetchHisPagingRows = function(queryName, options, rows, sidx, sord) {
+    return new Promise(function(resolve) {
+      if (!window.jsonrpc || !window.jsonrpc.AjaxJson) return resolve([]);
+
+      var params = {
+        func: 'ajaxExecuteQueryPaging',
+        uuid: window.jsonrpc.AjaxJson.uuid || '',
+        params: [queryName],
+        options: options || []
+      };
+
+      try {
+        var xhr = new XMLHttpRequest();
+        var url = '/vnpthis/RestService?_search=false&rows=' + encodeURIComponent(String(rows || 500)) +
+          '&page=1&sidx=' + encodeURIComponent(sidx || '') +
+          '&sord=' + encodeURIComponent(sord || 'desc') +
+          '&postData=' + encodeURIComponent(JSON.stringify(params));
+
+        xhr.open('GET', url, true);
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState !== 4) return;
+          if (xhr.status !== 200) return resolve([]);
+          try {
+            resolve(extractPagingRows(JSON.parse(xhr.responseText)));
+          } catch (_e) {
+            resolve([]);
+          }
+        };
+        xhr.send(null);
+      } catch (_e) {
+        resolve([]);
+      }
+    });
+  };
+
+  var uniqueSheetIds = function(rows) {
+    var ids = [];
+    var seen = {};
+    (rows || []).forEach(function(row) {
+      var id = firstExisting(row, ['MAUBENHPHAMID', 'SOPHIEUID', 'IDPHIEU']);
+      if (!id || seen[String(id)]) return;
+      seen[String(id)] = true;
+      ids.push(String(id));
+    });
+    return ids.slice(0, 40);
+  };
+
+  var fetchClinicalDetails = function(rows) {
+    var ids = uniqueSheetIds(rows);
+    if (!ids.length) return Promise.resolve([]);
+    return Promise.all(ids.map(function(id) {
+      return fetchHisPagingRows('NT.024.2', [{ name: '[0]', value: id }], 500, '', 'desc');
+    })).then(function(results) {
+      return results.flat();
+    });
+  };
+
+  var buildDspOptions = function(benhnhanId, type, scopeId) {
+    return [
+      { name: '[0]', value: '' },
+      { name: '[1]', value: String(benhnhanId || '') },
+      { name: '[2]', value: String(type) },
+      { name: '[3]', value: String(scopeId || '') }
+    ];
+  };
+
+  var fetchPreopClinicalRows = function(ids) {
+    var requests = [];
+    var scopes = [];
+
+    if (ids.khambenhId) {
+      requests.push(fetchHisPagingRows('TraCuuKetQuaHDG', [{ name: '[0]', value: String(ids.khambenhId) }], 500, '', 'desc'));
+      scopes.push(String(ids.khambenhId));
+    }
+    if (ids.hosobenhanId && String(ids.hosobenhanId) !== String(ids.khambenhId || '')) {
+      requests.push(fetchHisPagingRows('TraCuuKetQuaHDG', [{ name: '[0]', value: String(ids.hosobenhanId) }], 500, '', 'desc'));
+      scopes.push(String(ids.hosobenhanId));
+    }
+
+    scopes.forEach(function(scopeId) {
+      requests.push(fetchHisPagingRows('NT.024.DSPHIEU', buildDspOptions(ids.benhnhanId, 1, scopeId), 500, 'NGAYMAUBENHPHAM', 'desc'));
+      requests.push(fetchHisPagingRows('NT.024.DSPHIEU', buildDspOptions(ids.benhnhanId, 2, scopeId), 500, 'NGAYMAUBENHPHAM', 'desc'));
+    });
+
+    if (!requests.length) return Promise.resolve([]);
+
+    return Promise.all(requests).then(function(results) {
+      var rows = results.flat();
+      return fetchClinicalDetails(rows).then(function(details) {
+        return rows.concat(details);
+      });
+    });
+  };
+
+  var fetchPreopDocuments = function(ids) {
+    if (!ids.hosobenhanId) return Promise.resolve([]);
+
+    return fetchHisPagingRows('NTU01H101.02', [{
+      name: '[0]',
+      value: JSON.stringify({
+        HOSOBENHANID: String(ids.hosobenhanId),
+        TIEPNHANID: String(ids.tiepnhanId || ids.khambenhId || ''),
+        TRANGTHAI: '-1'
+      })
+    }], 1000, 'TENPHIEU asc, ', 'asc');
+  };
+
+  var buildReadinessAutoResult = function(clinicalRows, documentRows, regionalXray) {
+    var clinicalText = collectReadinessSearchText(clinicalRows);
+    var documentText = collectReadinessSearchText(documentRows);
+    var checked = {};
+    var matched = {};
+
+    var mark = function(id, value) {
+      checked[id] = Boolean(value);
+      if (checked[id]) {
+        var item = READINESS_REQUIRED_ITEMS.find(function(entry) { return entry.id === id; });
+        if (item) matched[id] = item.label;
+      }
+    };
+
+    mark('cbc',
+      containsSearchTerm(clinicalText, 'cong thuc mau') ||
+      containsSearchTerm(clinicalText, 'huyet hoc') ||
+      containsSearchTerm(clinicalText, 'tong phan tich te bao mau') ||
+      containsWholeSearchTerm(clinicalText, 'cbc')
+    );
+    mark('biochemistry',
+      containsSearchTerm(clinicalText, 'sinh hoa mau') ||
+      containsWholeSearchTerm(clinicalText, 'sinh hoa') ||
+      containsSearchTerm(clinicalText, 'hoa sinh')
+    );
+    mark('urine',
+      containsSearchTerm(clinicalText, 'nuoc tieu') ||
+      containsSearchTerm(clinicalText, 'tong phan tich nuoc tieu')
+    );
+    mark('chest_xray',
+      containsSearchTerm(clinicalText, 'x quang nguc') ||
+      containsSearchTerm(clinicalText, 'xquang nguc') ||
+      containsSearchTerm(clinicalText, 'nguc thang') ||
+      containsSearchTerm(clinicalText, 'phoi thang')
+    );
+    mark('abdominal_ultrasound',
+      containsSearchTerm(clinicalText, 'sieu am bung') ||
+      containsSearchTerm(clinicalText, 'sieu am tong quat')
+    );
+    mark('ecg',
+      containsWholeSearchTerm(clinicalText, 'ecg') ||
+      containsSearchTerm(clinicalText, 'dien tim')
+    );
+
+    var hasConsentTerm = containsSearchTerm(documentText, 'cam doan') ||
+      containsSearchTerm(documentText, 'cam ket') ||
+      containsSearchTerm(documentText, 'dong y');
+
+    mark('consultation', containsSearchTerm(documentText, 'hoi chan'));
+    mark('surgery_consent', hasConsentTerm && (
+      containsSearchTerm(documentText, 'phau thuat') ||
+      containsWholeSearchTerm(documentText, 'mo') ||
+      containsSearchTerm(documentText, 'thu thuat')
+    ));
+    mark('anesthesia_consent', hasConsentTerm && (
+      containsSearchTerm(documentText, 'gay me') ||
+      containsSearchTerm(documentText, 'vo cam')
+    ));
+
+    if (regionalXray) {
+      checked.regional_xray = containsSearchTerm(clinicalText, 'x quang') &&
+        containsSearchTerm(clinicalText, regionalXray);
+      if (checked.regional_xray) matched.regional_xray = 'X-quang vùng riêng';
+    }
+
+    var missing = READINESS_REQUIRED_ITEMS
+      .filter(function(item) { return !checked[item.id]; })
+      .map(function(item) { return { id: item.id, label: item.label }; });
+
+    return {
+      status: (clinicalRows.length || documentRows.length) ? 'checked' : 'unknown',
+      checked: checked,
+      matched: matched,
+      missing: missing,
+      checkedAt: new Date().toISOString(),
+      source: 'vnpt-his-current-patient'
+    };
+  };
+
+  var fetchPreopReadinessAsync = function(rowData, maBA, regionalXray) {
+    var ids = resolveIds(rowData, maBA);
+    return Promise.all([
+      fetchPreopClinicalRows(ids),
+      fetchPreopDocuments(ids)
+    ]).then(function(results) {
+      return buildReadinessAutoResult(results[0] || [], results[1] || [], regionalXray || '');
     });
   };
 
@@ -406,6 +684,50 @@
 
   window.addEventListener('message', function(event) {
     if (event.origin !== window.location.origin) return;
+    if (event.data && event.data.type === 'OASIS_REQ_FETCH_READINESS') {
+      var readinessEventId = event.data.eventId;
+      var readinessMaBA = event.data.maBA;
+      var fallbackReadiness = {
+        status: 'unknown',
+        checked: {},
+        matched: {},
+        missing: [],
+        checkedAt: new Date().toISOString(),
+        source: 'vnpt-his-current-patient'
+      };
+
+      try {
+        if (window.$ && window.jsonrpc) {
+          var readinessGrid = $('#grdBenhNhan');
+          if (!readinessGrid.length) readinessGrid = $('#grdDSBenhNhan');
+          var readinessRowData = getGridRowData(readinessGrid, readinessMaBA);
+
+          fetchPreopReadinessAsync(readinessRowData, readinessMaBA, event.data.regionalXray || '').then(function(readinessResult) {
+            window.postMessage({
+              type: 'OASIS_RES_FETCH_READINESS',
+              eventId: readinessEventId,
+              data: readinessResult || fallbackReadiness
+            }, window.location.origin);
+          }).catch(function() {
+            window.postMessage({
+              type: 'OASIS_RES_FETCH_READINESS',
+              eventId: readinessEventId,
+              data: fallbackReadiness
+            }, window.location.origin);
+          });
+          return;
+        }
+      } catch (_e) {
+        // Không log dữ liệu HIS thô.
+      }
+
+      window.postMessage({
+        type: 'OASIS_RES_FETCH_READINESS',
+        eventId: readinessEventId,
+        data: fallbackReadiness
+      }, window.location.origin);
+    }
+
     if (event.data && event.data.type === 'OASIS_REQ_FETCH_DIAGNOSIS') {
       var result = { cd: '', bkt: '' };
       var maBA = event.data.maBA;
@@ -422,15 +744,6 @@
           var khambenhId = ids.khambenhId;
           var hosobenhanId = ids.hosobenhanId;
           var sheetScopeId = hosobenhanId || khambenhId;
-
-          console.log('[OASIS API] Selected patient ids:', {
-            maBA: maBA,
-            benhnhanId: benhnhanId,
-            khambenhId: khambenhId,
-            hosobenhanId: hosobenhanId,
-            sheetScopeId: sheetScopeId,
-            rowKeys: Object.keys(rowData || {})
-          });
 
           if (sheetScopeId) {
             // Fallback chẩn đoán từ grid (hữu ích cho ngoại trú hoặc nếu chưa có tờ điều trị)
@@ -453,8 +766,8 @@
             return; // Exit early since we handle postMessage inside the callback
           }
         }
-      } catch (e) {
-        console.error('[OASIS API] Error:', e);
+      } catch (_e) {
+        console.error('[OASIS API] Error');
       }
       
       window.postMessage({

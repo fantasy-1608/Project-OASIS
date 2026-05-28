@@ -1,5 +1,6 @@
 
 import { useMemo } from 'react';
+import { evaluateSurgeryReadiness } from '../../lib/readiness';
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '---';
@@ -103,6 +104,7 @@ export function TableView({ boardState }) {
               <th className="col-year" style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)', textAlign: 'center' }}>Năm sinh</th>
               <th className="col-room" style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)', textAlign: 'center' }}>Buồng</th>
               <th className="col-diagnosis" style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Chẩn đoán / phẫu thuật dự kiến</th>
+              <th className="col-readiness" style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Hồ sơ</th>
               <th className="col-notes" style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Ghi chú</th>
             </tr>
           </thead>
@@ -111,6 +113,8 @@ export function TableView({ boardState }) {
               const spans = rowSpans[idx] || { dateSpan: 1, shiftSpan: 1 };
               const isMorning = task.shift === 'morning';
               const shiftLabel = isMorning ? 'Sáng' : 'Chiều';
+              const readiness = evaluateSurgeryReadiness(task);
+              const completedIds = new Set(readiness.completedItems.map(item => item.id));
               
               return (
                 <tr key={task.id} style={{ background: 'var(--bg-card)' }}>
@@ -175,6 +179,27 @@ export function TableView({ boardState }) {
                     <div style={{ color: 'var(--accent-muted)', fontSize: '11px' }}>{task.surgical_method}</div>
                   </td>
 
+                  {/* Hồ sơ trước mổ */}
+                  <td className="col-readiness" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <div className={`print-readiness print-readiness--${readiness.status}`}>
+                      <div className="print-readiness-status">{readiness.label}</div>
+                      <div className="print-readiness-grid">
+                        {readiness.requiredItems.map(item => {
+                          const completed = completedIds.has(item.id);
+                          return (
+                            <span
+                              key={item.id}
+                              className={`print-readiness-chip ${completed ? 'print-readiness-chip--done' : ''}`}
+                            >
+                              <span className="print-readiness-box">{completed ? '☑' : '☐'}</span>
+                              {item.shortLabel}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </td>
+
                   {/* Ghi chú */}
                   <td className="col-notes" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)' }}></td>
                 </tr>
@@ -186,4 +211,3 @@ export function TableView({ boardState }) {
     </div>
   );
 }
-

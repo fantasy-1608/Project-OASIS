@@ -1,0 +1,41 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: 🧞
+      - generic [ref=e7]:
+        - generic [ref=e8]: Aladinn OASIS
+        - generic [ref=e9]: Bảng dự kiến mổ nội bộ
+    - generic [ref=e10]:
+      - button [ref=e11] [cursor=pointer]:
+        - img [ref=e12]
+      - generic [ref=e14]:
+        - generic [ref=e15]: Hôm nay
+        - generic [ref=e16]: Thứ Ba, 26 tháng 05 2026
+      - button [ref=e17] [cursor=pointer]:
+        - img [ref=e18]
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - img [ref=e22]
+        - generic [ref=e26]: Dữ liệu khoa
+      - generic [ref=e27]:
+        - generic [ref=e28]: "1"
+        - generic [ref=e29]: ca
+      - generic [ref=e30]:
+        - img [ref=e31]
+        - textbox "Tìm tên, mã BN..." [ref=e34]
+      - button "In / Xuất PDF" [ref=e264] [cursor=pointer]:
+        - img [ref=e265]
+      - button "Chế độ thẻ" [active] [ref=e269] [cursor=pointer]:
+        - img [ref=e270]
+      - button "Đang mở khóa" [ref=e137] [cursor=pointer]:
+        - img [ref=e138]
+      - button "Tải lại" [ref=e41] [cursor=pointer]:
+        - img [ref=e42]
+      - button "Kho lưu trữ dự kiến mổ" [ref=e47] [cursor=pointer]:
+        - img [ref=e48]
+      - button "Lịch tuần" [ref=e52] [cursor=pointer]:
+        - img [ref=e53]
+      - button "Thêm dự kiến" [ref=e141] [cursor=pointer]:
+        - img [ref=e142]
+        - text: Thêm dự kiến
+  - generic [ref=e275]: Không có dự kiến mổ nào trong ngày.

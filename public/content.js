@@ -23,7 +23,6 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'OPEN_PATIENT') {
     const maBA = msg.payload.maBA;
     const hoTen = msg.payload.hoTen;
-    console.log('[OASIS] Received reverse navigation request for:', { maBA, hoTen });
     
     const docs = typeof getAccessibleDocuments === 'function' ? getAccessibleDocuments() : [document];
     
@@ -82,7 +81,6 @@ chrome.runtime.onMessage.addListener((msg) => {
     }
 
     if (gridInput && hoTen) {
-      console.log('[OASIS] Found target grid input for reverse navigation (Họ tên):', gridInput);
       gridInput.focus();
       
       // Giả lập gõ phím theo logic Aladinn Sign: chừa lại ký tự cuối để gõ
@@ -121,7 +119,6 @@ chrome.runtime.onMessage.addListener((msg) => {
         gridInput.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', keyCode: 13, bubbles: true }));
       }
     } else if (globalInput) {
-      console.log('[OASIS] Falling back to global search (Mã BA):', globalInput);
       globalInput.focus();
       globalInput.value = maBA;
       globalInput.dispatchEvent(new Event('input', { bubbles: true }));
@@ -423,6 +420,32 @@ function extractCurrentTreatmentTextareas() {
   };
 }
 
+function requestOasisInjected(requestType, responseType, payload = {}, timeoutMs = 3000) {
+  return new Promise((resolve) => {
+    const eventId = 'oasis_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    let settled = false;
+    let timeoutId = null;
+
+    const finish = (data) => {
+      if (settled) return;
+      settled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      window.removeEventListener('message', listener);
+      resolve(data);
+    };
+
+    const listener = (event) => {
+      if (event.data && event.data.type === responseType && event.data.eventId === eventId) {
+        finish(event.data.data);
+      }
+    };
+
+    window.addEventListener('message', listener);
+    window.postMessage({ type: requestType, eventId, ...payload }, window.location.origin);
+    timeoutId = setTimeout(() => finish(null), timeoutMs);
+  });
+}
+
 // Inject "Lên dự kiến mổ" button into HIS UI
 function injectScheduleButtons() {
   // Tìm element chứa chữ "Loại bệnh án:" trong vùng banner Hành chính
@@ -484,48 +507,40 @@ function injectScheduleButtons() {
 
       btn.innerHTML = '⏳ Đang lấy dữ liệu...';
 
-      // Tạo một Promise để chờ dữ liệu từ Injected Script
       const fetchDiagnosisFromAPI = () => {
-        return new Promise((resolve) => {
-          const eventId = 'oasis_diag_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-          let settled = false;
-          let timeoutId = null;
+        return requestOasisInjected(
+          'OASIS_REQ_FETCH_DIAGNOSIS',
+          'OASIS_RES_FETCH_DIAGNOSIS',
+          { maBA: clickMaBA },
+          3000
+        ).then(data => data || { cd: '', bkt: '' });
+      };
 
-          const finish = (data) => {
-            if (settled) return;
-            settled = true;
-            if (timeoutId) clearTimeout(timeoutId);
-            window.removeEventListener('message', listener);
-            resolve(data || { cd: '', bkt: '' });
-          };
-          
-          const listener = (event) => {
-            if (event.data && event.data.type === 'OASIS_RES_FETCH_DIAGNOSIS' && event.data.eventId === eventId) {
-              finish(event.data.data);
-            }
-          };
-          window.addEventListener('message', listener);
-
-          window.postMessage({
-             type: 'OASIS_REQ_FETCH_DIAGNOSIS',
-             eventId: eventId,
-             maBA: clickMaBA
-          }, window.location.origin);
-
-          // Timeout sau 3s nếu có lỗi
-          timeoutId = setTimeout(() => finish({ cd: '', bkt: '' }), 3000);
+      const fetchReadinessFromAPI = () => {
+        return requestOasisInjected(
+          'OASIS_REQ_FETCH_READINESS',
+          'OASIS_RES_FETCH_READINESS',
+          { maBA: clickMaBA },
+          7000
+        ).then(data => data || {
+          status: 'unknown',
+          checked: {},
+          matched: {},
+          missing: [],
+          checkedAt: new Date().toISOString(),
+          source: 'vnpt-his-current-patient',
         });
       };
 
       const textareaData = extractCurrentTreatmentTextareas();
-      console.log('[OASIS] Current treatment textareas:', textareaData);
 
-      const apiData = await fetchDiagnosisFromAPI();
+      const [apiData, readinessData] = await Promise.all([
+        fetchDiagnosisFromAPI(),
+        fetchReadinessFromAPI(),
+      ]);
       const apiCd = normalizeText(apiData?.cd || '');
       const apiBkt = normalizeText(apiData?.bkt || '');
       const fallbackCd = currentData.chanDoan || initialData.chanDoan || '';
-
-      console.log('[OASIS] API treatment diagnosis:', apiData);
 
       // DOM là nguồn đúng nhất khi tờ điều trị đang mở; API vẫn bổ sung khi DOM thiếu một phần.
       const bestCd = textareaData.cd || apiCd || fallbackCd;
@@ -547,7 +562,8 @@ function injectScheduleButtons() {
         priority: clickIsSurgical ? 'urgent' : 'elective',
         gender: clickGender,
         birth_year: clickBirthYear,
-        room: clickRoom
+        room: clickRoom,
+        readiness_auto: readinessData
       };
 
       if (chrome && chrome.storage && chrome.storage.local) {

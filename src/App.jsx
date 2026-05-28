@@ -12,10 +12,25 @@ import { useSurgeries } from './hooks/useSurgeries';
 import { useAuth } from './hooks/useAuth';
 import { LoginModal } from './components/Auth/LoginModal';
 import { isEnabled } from './lib/featureFlags';
+import { evaluateSurgeryReadiness, formatReadinessMissingText } from './lib/readiness';
 import { format } from 'date-fns';
 import './index.css';
 
 let toastIdCounter = 0;
+
+function buildScheduleConfirmMessage(baseMessage, surgery, targetShift) {
+  if (!surgery || targetShift === 'waiting') return baseMessage;
+
+  const readiness = evaluateSurgeryReadiness(surgery);
+  if (readiness.status === 'ready') return baseMessage;
+
+  const missingText = readiness.status === 'unknown' ? '' : formatReadinessMissingText(readiness, 8);
+  const readinessText = missingText
+    ? `\n\nHồ sơ: ${readiness.label}\nCòn thiếu: ${missingText}\n\nVẫn xếp dự kiến?`
+    : `\n\nHồ sơ: ${readiness.label}\n\nVẫn xếp dự kiến?`;
+
+  return `${baseMessage}${readinessText}`;
+}
 
 function App() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -258,7 +273,13 @@ function App() {
     const targetShift = destination.droppableId;
     const targetLabel = targetShift === 'morning' ? 'Ca Sáng' : targetShift === 'afternoon' ? 'Ca Chiều' : 'Danh sách chờ';
 
-    if (!window.confirm(`Xác nhận chuyển ${surgery?.patient_name || 'ca này'} sang ${targetLabel}?`)) {
+    const confirmMessage = buildScheduleConfirmMessage(
+      `Xác nhận chuyển ${surgery?.patient_name || 'ca này'} sang ${targetLabel}?`,
+      surgery,
+      targetShift
+    );
+
+    if (!window.confirm(confirmMessage)) {
       return;
     }
 
@@ -437,7 +458,12 @@ function App() {
     }
     const surgery = surgeries.find(s => s.id === id);
     const shiftLabel = shift === 'morning' ? 'Ca Sáng' : 'Ca Chiều';
-    if (!window.confirm(`Xác nhận xếp ${surgery?.patient_name || 'ca này'} vào ${shiftLabel} ngày ${date}?`)) return;
+    const confirmMessage = buildScheduleConfirmMessage(
+      `Xác nhận xếp ${surgery?.patient_name || 'ca này'} vào ${shiftLabel} ngày ${date}?`,
+      surgery,
+      shift
+    );
+    if (!window.confirm(confirmMessage)) return;
     const { error } = await updateSurgery(id, { shift, date, order_in_shift: 999 });
     if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
     else showToast('success', `📅 ${surgery?.patient_name || ''} → ${shiftLabel} ${date.slice(5)}`);

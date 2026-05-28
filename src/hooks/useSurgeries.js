@@ -2,40 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { MOCK_SURGERIES, buildInitialBoardState } from '../lib/mockData';
 import { encryptSurgery, decryptSurgery, encryptFields } from '../lib/crypto';
-
-// ---- Pack/Unpack extra fields into DB `notes` column ----
-// DB chưa có cột surgical_method, admission_date, room → pack vào notes dưới dạng JSON
-const EXTRA_FIELDS = ['surgical_method', 'admission_date', 'room'];
-
-function packExtras(surgery) {
-  const extras = {};
-  let hasExtras = false;
-  for (const key of EXTRA_FIELDS) {
-    if (surgery[key]) { extras[key] = surgery[key]; hasExtras = true; }
-  }
-  const packed = { ...surgery };
-  if (hasExtras) {
-    packed.notes = JSON.stringify(extras);
-  }
-  // Loại bỏ các field chưa có trên DB
-  for (const key of EXTRA_FIELDS) delete packed[key];
-  return packed;
-}
-
-function unpackExtras(surgery) {
-  const unpacked = { ...surgery };
-  if (unpacked.notes) {
-    try {
-      const extras = JSON.parse(unpacked.notes);
-      for (const key of EXTRA_FIELDS) {
-        if (extras[key]) unpacked[key] = extras[key];
-      }
-    } catch {
-      // notes không phải JSON (dữ liệu cũ) → giữ nguyên
-    }
-  }
-  return unpacked;
-}
+import { packExtras, unpackExtras } from '../lib/surgeryExtras';
 
 // Các cột được xác nhận tồn tại trên Supabase
 const KNOWN_DB_COLUMNS = [
