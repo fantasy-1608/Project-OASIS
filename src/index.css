@@ -854,8 +854,8 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   padding: 16px 24px 8px;
-  background: rgba(26, 21, 16, 0.4);
-  border-bottom: 1px solid var(--border-subtle);
+  background: #f8fafc !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
 }
 @media (min-width: 768px) {
   .cal-summary-dashboard {
@@ -864,24 +864,25 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 }
 
 .cal-stat-widget {
-  background: rgba(42, 33, 24, 0.5);
-  border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  background: #ffffff !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 6px !important; /* Flat design matches Aladinn v2 */
   padding: 12px 16px;
   display: flex;
   align-items: center;
   gap: 12px;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .cal-stat-widget:hover {
   transform: translateY(-2px);
-  background: rgba(42, 33, 24, 0.8);
-  border-color: var(--border-default);
+  background: #f1f5f9 !important;
+  border-color: var(--accent-primary) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
 }
 .cal-stat-icon-wrapper {
   width: 36px;
   height: 36px;
-  border-radius: 8px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -895,29 +896,29 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 .cal-stat-value {
   font-size: 16px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--text-primary) !important;
 }
 .cal-stat-label {
   font-size: 10px;
-  color: var(--text-muted);
+  color: var(--text-muted) !important;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
 /* Widget variations */
-.cal-stat-widget--total .cal-stat-icon-wrapper { color: var(--accent-primary); background: rgba(212,162,90,0.12); }
-.cal-stat-widget--total:hover { box-shadow: 0 0 16px rgba(212,162,90,0.08); }
+.cal-stat-widget--total .cal-stat-icon-wrapper { color: var(--accent-primary) !important; background: rgba(0, 102, 179, 0.1) !important; }
+.cal-stat-widget--total:hover { box-shadow: 0 4px 12px rgba(0, 102, 179, 0.08) !important; }
 
-.cal-stat-widget--emergency .cal-stat-icon-wrapper { color: #ef4444; background: rgba(239,68,68,0.15); }
-.cal-stat-widget--emergency:hover { box-shadow: 0 0 16px rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.3); }
-.cal-stat-widget--emergency .cal-stat-value { color: #ef4444; }
+.cal-stat-widget--emergency .cal-stat-icon-wrapper { color: #ef4444 !important; background: rgba(239,68,68,0.1) !important; }
+.cal-stat-widget--emergency:hover { box-shadow: 0 4px 12px rgba(239,68,68,0.08) !important; border-color: #ef4444 !important; }
+.cal-stat-widget--emergency .cal-stat-value { color: #ef4444 !important; }
 
-.cal-stat-widget--urgent .cal-stat-icon-wrapper { color: #f59e0b; background: rgba(245,158,11,0.15); }
-.cal-stat-widget--urgent:hover { box-shadow: 0 0 16px rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.3); }
-.cal-stat-widget--urgent .cal-stat-value { color: #f59e0b; }
+.cal-stat-widget--urgent .cal-stat-icon-wrapper { color: #f59e0b !important; background: rgba(245,158,11,0.1) !important; }
+.cal-stat-widget--urgent:hover { box-shadow: 0 4px 12px rgba(245,158,11,0.08) !important; border-color: #f59e0b !important; }
+.cal-stat-widget--urgent .cal-stat-value { color: #f59e0b !important; }
 
-.cal-stat-widget--waiting .cal-stat-icon-wrapper { color: var(--text-secondary); background: rgba(255,255,255,0.06); }
-.cal-stat-widget--waiting:hover { box-shadow: 0 0 16px rgba(255,255,255,0.04); }
+.cal-stat-widget--waiting .cal-stat-icon-wrapper { color: var(--text-secondary) !important; background: rgba(71, 85, 105, 0.1) !important; }
+.cal-stat-widget--waiting:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.04) !important; }
 
 /* Weekly Grid Layout */
 .cal-grid {
@@ -936,12 +937,12 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 }
 
 .cal-day-cell {
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 6px !important; /* Flat design matches Aladinn v2 */
   padding: 12px;
   cursor: pointer;
   transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-  background: rgba(42, 33, 24, 0.2);
+  background: #f8fafc !important;
   min-height: 200px;
   height: 100%;
   display: flex;
@@ -951,30 +952,29 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
   overflow: hidden;
 }
 .cal-day-cell:hover {
-  border-color: rgba(212,162,90,0.35);
-  background: rgba(42, 33, 24, 0.4);
+  border-color: var(--accent-primary) !important;
+  background: #f1f5f9 !important;
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
 }
 
 .cal-day--selected {
   border-color: var(--accent-primary) !important;
-  background: rgba(212,162,90,0.08) !important;
-  box-shadow: inset 0 0 12px rgba(212,162,90,0.05);
+  background: #e0f2fe !important; /* Premium medical light blue */
+  box-shadow: none !important;
 }
 
-/* Today style with gold pulse */
+/* Today style with clean green pulse instead of gold */
 .cal-day--today {
-  border-color: rgba(212,162,90,0.5) !important;
-  background: rgba(212,162,90,0.05) !important;
-  animation: glowPulseGold 3s infinite ease-in-out;
+  border-color: #22c55e !important;
+  background: #f0fdf4 !important; /* Clean light green */
 }
 .cal-day--today .cal-day-num {
-  color: var(--accent-primary);
+  color: #22c55e !important;
   font-weight: 800;
 }
 .cal-day--today .cal-day-name {
-  color: var(--accent-primary);
+  color: #22c55e !important;
 }
 
 .cal-day--empty {
@@ -1019,9 +1019,9 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 .cal-total-badge {
   font-size: 10px;
   font-weight: 600;
-  color: var(--accent-primary);
-  background: rgba(212,162,90,0.08);
-  border: 1px solid rgba(212,162,90,0.15);
+  color: var(--accent-primary) !important;
+  background: rgba(0, 102, 179, 0.08) !important;
+  border: 1px solid rgba(0, 102, 179, 0.18) !important;
   padding: 2px 8px;
   border-radius: 12px;
 }
@@ -1041,11 +1041,11 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
   width: 3px;
 }
 .cal-day-scroll-container::-webkit-scrollbar-thumb {
-  background: rgba(212,162,90,0.15);
+  background: rgba(0, 102, 179, 0.15) !important;
   border-radius: 2px;
 }
 .cal-day-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(212,162,90,0.3);
+  background: rgba(0, 102, 179, 0.3) !important;
 }
 
 .cal-shift-group {
@@ -1071,10 +1071,10 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 
 /* Premium case micro-card */
 .cal-case-micro-card {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(212, 162, 90, 0.08);
-  border-left: 3px solid var(--border-subtle);
-  border-radius: 6px;
+  background: #ffffff !important;
+  border: 1px solid var(--border-default) !important;
+  border-left: 3px solid var(--border-subtle) !important;
+  border-radius: 6px !important;
   padding: 6px 8px;
   display: flex;
   flex-direction: column;
@@ -1082,13 +1082,13 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
   transition: all 0.15s ease;
 }
 .cal-case-micro-card:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(212, 162, 90, 0.2);
+  background: #f8fafc !important;
+  border-color: var(--accent-primary) !important;
   transform: translateX(2px);
 }
 .cal-case-micro-card--waiting {
-  background: rgba(255, 255, 255, 0.01);
-  border-style: dashed;
+  background: #fafafa !important;
+  border-style: dashed !important;
 }
 .cal-case-top {
   display: flex;

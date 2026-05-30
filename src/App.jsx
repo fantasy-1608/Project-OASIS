@@ -11,6 +11,7 @@ import { ToastContainer } from './components/Toast/Toast';
 import { useSurgeries } from './hooks/useSurgeries';
 import { useAuth } from './hooks/useAuth';
 import { LoginModal } from './components/Auth/LoginModal';
+import { PasscodeModal } from './components/Modal/PasscodeModal';
 import { isEnabled } from './lib/featureFlags';
 import { evaluateSurgeryReadiness, formatReadinessMissingText } from './lib/readiness';
 import { format } from 'date-fns';
@@ -54,6 +55,17 @@ function App() {
   
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
+
+  // Custom passcode modal state (replaces window.prompt)
+  const [passcodeModalOpen, setPasscodeModalOpen] = useState(false);
+  const [passcodeActionLabel, setPasscodeActionLabel] = useState('');
+  const [onPasscodeSuccess, setOnPasscodeSuccess] = useState(null);
+
+  const triggerPasscodeLock = useCallback((actionLabel, onSuccess) => {
+    setPasscodeActionLabel(actionLabel);
+    setOnPasscodeSuccess(() => onSuccess);
+    setPasscodeModalOpen(true);
+  }, []);
 
   const isUnlockedEffective = useMemo(() => {
     return isEnabled('AUTH_ENABLED')
@@ -204,7 +216,8 @@ function App() {
       p.style.width = `${size}px`;
       p.style.height = `${size}px`;
       const colors = ['#d4a25a', '#c4883c', '#a18764', '#e8bc6a', '#f5d89a'];
-      p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      const colorIndex = Math.floor(Math.random() * colors.length);
+      p.style.backgroundColor = colors.at(colorIndex);
       p.style.left = `${Math.random() * 100}vw`;
       p.style.animationDuration = `${Math.random() * 14 + 8}s`;
       document.body.appendChild(p);
@@ -228,16 +241,10 @@ function App() {
         setIsUnlocked(false);
         showToast('info', 'Đã khóa chế độ chỉnh sửa');
       } else {
-        const pwd = window.prompt('Nhập mã mở khóa:');
-        // NOTE: This hardcoded passcode is intentionally used as a basic safeguard
-        // to prevent accidental modifications by general users. It is NOT intended
-        // as a secure authentication mechanism. Do not flag as a security vulnerability.
-        if (pwd === 'CTCH') {
+        triggerPasscodeLock('để mở khóa chế độ chỉnh sửa', () => {
           setIsUnlocked(true);
           showToast('success', 'Đã mở khóa!');
-        } else if (pwd !== null) {
-          showToast('error', 'Mật khẩu không đúng!');
-        }
+        });
       }
     }
   };
@@ -271,7 +278,7 @@ function App() {
       }
     }
 
-    const surgery = boardState.tasks[draggableId];
+    const surgery = Reflect.get(boardState.tasks || {}, draggableId);
     const targetShift = destination.droppableId;
     const targetLabel = targetShift === 'morning' ? 'Ca Sáng' : targetShift === 'afternoon' ? 'Ca Chiều' : 'Danh sách chờ';
 
@@ -318,22 +325,25 @@ function App() {
         }
         return;
       }
+      setEditingSurgery(null);
+      setDefaultShift(shift);
+      setModalOpen(true);
     } else {
       if (!isUnlocked) {
-        const pwd = window.prompt('Nhập mã mở khóa để thêm dự kiến mổ:');
-        if (pwd === 'CTCH') {
+        triggerPasscodeLock('để thêm dự kiến mổ', () => {
           setIsUnlocked(true);
           showToast('success', 'Đã mở khóa!');
-        } else {
-          if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
-          return;
-        }
+          setEditingSurgery(null);
+          setDefaultShift(shift);
+          setModalOpen(true);
+        });
+      } else {
+        setEditingSurgery(null);
+        setDefaultShift(shift);
+        setModalOpen(true);
       }
     }
-    setEditingSurgery(null);
-    setDefaultShift(shift);
-    setModalOpen(true);
-  }, [isAuthenticated, can, isUnlocked, showToast]);
+  }, [isAuthenticated, can, isUnlocked, triggerPasscodeLock, showToast]);
 
   const handleOpenEdit = useCallback((surgery) => {
     if (isEnabled('AUTH_ENABLED')) {
@@ -346,21 +356,22 @@ function App() {
         }
         return;
       }
+      setEditingSurgery(surgery);
+      setModalOpen(true);
     } else {
       if (!isUnlocked) {
-        const pwd = window.prompt('Nhập mã mở khóa để sửa thông tin ca mổ:');
-        if (pwd === 'CTCH') {
+        triggerPasscodeLock('để sửa thông tin ca mổ', () => {
           setIsUnlocked(true);
           showToast('success', 'Đã mở khóa!');
-        } else {
-          if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
-          return;
-        }
+          setEditingSurgery(surgery);
+          setModalOpen(true);
+        });
+      } else {
+        setEditingSurgery(surgery);
+        setModalOpen(true);
       }
     }
-    setEditingSurgery(surgery);
-    setModalOpen(true);
-  }, [isAuthenticated, can, isUnlocked, showToast]);
+  }, [isAuthenticated, can, isUnlocked, triggerPasscodeLock, showToast]);
 
   const handleSave = useCallback(async (formData) => {
     if (editingSurgery && editingSurgery.id) {
@@ -385,24 +396,33 @@ function App() {
         }
         return;
       }
+      const surgery = surgeries.find(s => s.id === id);
+      if (!window.confirm(`Xác nhận xóa ca mổ của bệnh nhân ${surgery?.patient_name || ''}?`)) return;
+      const { error } = await deleteSurgery(id);
+      if (error) showToast('error', `❌ Lỗi xoá: ${error}`);
+      else showToast('info', `🗑️ Đã xoá khỏi bảng dự kiến: ${surgery?.patient_name || ''}`);
     } else {
       if (!isUnlocked) {
-        const pwd = window.prompt('Nhập mã mở khóa để xóa ca mổ:');
-        if (pwd === 'CTCH') {
+        triggerPasscodeLock('để xóa ca mổ', () => {
           setIsUnlocked(true);
           showToast('success', 'Đã mở khóa!');
-        } else {
-          if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
-          return;
-        }
+          setTimeout(async () => {
+            const surgery = surgeries.find(s => s.id === id);
+            if (!window.confirm(`Xác nhận xóa ca mổ của bệnh nhân ${surgery?.patient_name || ''}?`)) return;
+            const { error } = await deleteSurgery(id);
+            if (error) showToast('error', `❌ Lỗi xoá: ${error}`);
+            else showToast('info', `🗑️ Đã xoá khỏi bảng dự kiến: ${surgery?.patient_name || ''}`);
+          }, 150);
+        });
+      } else {
+        const surgery = surgeries.find(s => s.id === id);
+        if (!window.confirm(`Xác nhận xóa ca mổ của bệnh nhân ${surgery?.patient_name || ''}?`)) return;
+        const { error } = await deleteSurgery(id);
+        if (error) showToast('error', `❌ Lỗi xoá: ${error}`);
+        else showToast('info', `🗑️ Đã xoá khỏi bảng dự kiến: ${surgery?.patient_name || ''}`);
       }
     }
-    const surgery = surgeries.find(s => s.id === id);
-    if (!window.confirm(`Xác nhận xóa ca mổ của bệnh nhân ${surgery?.patient_name || ''}?`)) return;
-    const { error } = await deleteSurgery(id);
-    if (error) showToast('error', `❌ Lỗi xoá: ${error}`);
-    else showToast('info', `🗑️ Đã xoá khỏi bảng dự kiến: ${surgery?.patient_name || ''}`);
-  }, [surgeries, deleteSurgery, showToast, isAuthenticated, can, isUnlocked]);
+  }, [surgeries, deleteSurgery, showToast, isAuthenticated, can, isUnlocked, triggerPasscodeLock]);
 
   // ---- Card quick actions ----
   const handleMoveToWaiting = useCallback(async (id) => {
@@ -416,24 +436,33 @@ function App() {
         }
         return;
       }
+      const surgery = surgeries.find(s => s.id === id);
+      if (!window.confirm(`Xác nhận trả ${surgery?.patient_name || 'ca này'} về danh sách chờ?`)) return;
+      const { error } = await updateSurgery(id, { shift: 'waiting', order_in_shift: 0 });
+      if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
+      else showToast('info', `🕐 ${surgery?.patient_name || ''} → Danh sách chờ`);
     } else {
       if (!isUnlocked) {
-        const pwd = window.prompt('Nhập mã mở khóa để thay đổi lịch mổ:');
-        if (pwd === 'CTCH') {
+        triggerPasscodeLock('để thay đổi lịch mổ', () => {
           setIsUnlocked(true);
           showToast('success', 'Đã mở khóa!');
-        } else {
-          if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
-          return;
-        }
+          setTimeout(async () => {
+            const surgery = surgeries.find(s => s.id === id);
+            if (!window.confirm(`Xác nhận trả ${surgery?.patient_name || 'ca này'} về danh sách chờ?`)) return;
+            const { error } = await updateSurgery(id, { shift: 'waiting', order_in_shift: 0 });
+            if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
+            else showToast('info', `🕐 ${surgery?.patient_name || ''} → Danh sách chờ`);
+          }, 150);
+        });
+      } else {
+        const surgery = surgeries.find(s => s.id === id);
+        if (!window.confirm(`Xác nhận trả ${surgery?.patient_name || 'ca này'} về danh sách chờ?`)) return;
+        const { error } = await updateSurgery(id, { shift: 'waiting', order_in_shift: 0 });
+        if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
+        else showToast('info', `🕐 ${surgery?.patient_name || ''} → Danh sách chờ`);
       }
     }
-    const surgery = surgeries.find(s => s.id === id);
-    if (!window.confirm(`Xác nhận trả ${surgery?.patient_name || 'ca này'} về danh sách chờ?`)) return;
-    const { error } = await updateSurgery(id, { shift: 'waiting', order_in_shift: 0 });
-    if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
-    else showToast('info', `🕐 ${surgery?.patient_name || ''} → Danh sách chờ`);
-  }, [surgeries, updateSurgery, showToast, isAuthenticated, can, isUnlocked]);
+  }, [surgeries, updateSurgery, showToast, isAuthenticated, can, isUnlocked, triggerPasscodeLock]);
 
   const handleSchedule = useCallback(async (id, shift, date) => {
     if (isEnabled('AUTH_ENABLED')) {
@@ -446,30 +475,51 @@ function App() {
         }
         return;
       }
+      const surgery = surgeries.find(s => s.id === id);
+      const shiftLabel = shift === 'morning' ? 'Ca Sáng' : 'Ca Chiều';
+      const confirmMessage = buildScheduleConfirmMessage(
+        `Xác nhận xếp ${surgery?.patient_name || 'ca này'} vào ${shiftLabel} ngày ${date}?`,
+        surgery,
+        shift
+      );
+      if (!window.confirm(confirmMessage)) return;
+      const { error } = await updateSurgery(id, { shift, date, order_in_shift: 999 });
+      if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
+      else showToast('success', `📅 ${surgery?.patient_name || ''} → ${shiftLabel} ${date.slice(5)}`);
     } else {
       if (!isUnlocked) {
-        const pwd = window.prompt('Nhập mã mở khóa để xếp lịch mổ:');
-        if (pwd === 'CTCH') {
+        triggerPasscodeLock('để xếp lịch mổ', () => {
           setIsUnlocked(true);
           showToast('success', 'Đã mở khóa!');
-        } else {
-          if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
-          return;
-        }
+          setTimeout(async () => {
+            const surgery = surgeries.find(s => s.id === id);
+            const shiftLabel = shift === 'morning' ? 'Ca Sáng' : 'Ca Chiều';
+            const confirmMessage = buildScheduleConfirmMessage(
+              `Xác nhận xếp ${surgery?.patient_name || 'ca này'} vào ${shiftLabel} ngày ${date}?`,
+              surgery,
+              shift
+            );
+            if (!window.confirm(confirmMessage)) return;
+            const { error } = await updateSurgery(id, { shift, date, order_in_shift: 999 });
+            if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
+            else showToast('success', `📅 ${surgery?.patient_name || ''} → ${shiftLabel} ${date.slice(5)}`);
+          }, 150);
+        });
+      } else {
+        const surgery = surgeries.find(s => s.id === id);
+        const shiftLabel = shift === 'morning' ? 'Ca Sáng' : 'Ca Chiều';
+        const confirmMessage = buildScheduleConfirmMessage(
+          `Xác nhận xếp ${surgery?.patient_name || 'ca này'} vào ${shiftLabel} ngày ${date}?`,
+          surgery,
+          shift
+        );
+        if (!window.confirm(confirmMessage)) return;
+        const { error } = await updateSurgery(id, { shift, date, order_in_shift: 999 });
+        if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
+        else showToast('success', `📅 ${surgery?.patient_name || ''} → ${shiftLabel} ${date.slice(5)}`);
       }
     }
-    const surgery = surgeries.find(s => s.id === id);
-    const shiftLabel = shift === 'morning' ? 'Ca Sáng' : 'Ca Chiều';
-    const confirmMessage = buildScheduleConfirmMessage(
-      `Xác nhận xếp ${surgery?.patient_name || 'ca này'} vào ${shiftLabel} ngày ${date}?`,
-      surgery,
-      shift
-    );
-    if (!window.confirm(confirmMessage)) return;
-    const { error } = await updateSurgery(id, { shift, date, order_in_shift: 999 });
-    if (error) showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
-    else showToast('success', `📅 ${surgery?.patient_name || ''} → ${shiftLabel} ${date.slice(5)}`);
-  }, [surgeries, updateSurgery, showToast, isAuthenticated, can, isUnlocked]);
+  }, [surgeries, updateSurgery, showToast, isAuthenticated, can, isUnlocked, triggerPasscodeLock]);
 
   const handleMarkStatus = useCallback(async (id, status) => {
     if (isEnabled('AUTH_ENABLED')) {
@@ -482,29 +532,45 @@ function App() {
         }
         return;
       }
+      const surgery = surgeries.find(s => s.id === id);
+      const { error } = await updateSurgery(id, { status });
+      if (error) {
+        showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
+        return;
+      }
+      if (status === 'completed') showToast('success', `✅ ${surgery?.patient_name || ''} — Đã mổ xong!`);
+      else if (status === 'postponed') showToast('info', `⏸️ ${surgery?.patient_name || ''} — Đã hoãn dự kiến mổ!`);
+      else if (status === 'cancelled') showToast('info', `🚫 ${surgery?.patient_name || ''} — Đã hủy dự kiến mổ!`);
     } else {
       if (!isUnlocked) {
-        const pwd = window.prompt('Nhập mã mở khóa để cập nhật trạng thái ca mổ:');
-        if (pwd === 'CTCH') {
+        triggerPasscodeLock('để cập nhật trạng thái ca mổ', () => {
           setIsUnlocked(true);
           showToast('success', 'Đã mở khóa!');
-        } else {
-          if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
+          setTimeout(async () => {
+            const surgery = surgeries.find(s => s.id === id);
+            const { error } = await updateSurgery(id, { status });
+            if (error) {
+              showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
+              return;
+            }
+            if (status === 'completed') showToast('success', `✅ ${surgery?.patient_name || ''} — Đã mổ xong!`);
+            else if (status === 'postponed') showToast('info', `⏸️ ${surgery?.patient_name || ''} — Đã hoãn dự kiến mổ!`);
+            else if (status === 'cancelled') showToast('info', `🚫 ${surgery?.patient_name || ''} — Đã hủy dự kiến mổ!`);
+          }, 150);
+        });
+      } else {
+        const surgery = surgeries.find(s => s.id === id);
+        const { error } = await updateSurgery(id, { status });
+        if (error) {
+          showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
           return;
         }
+        if (status === 'completed') showToast('success', `✅ ${surgery?.patient_name || ''} — Đã mổ xong!`);
+        else if (status === 'postponed') showToast('info', `⏸️ ${surgery?.patient_name || ''} — Đã hoãn dự kiến mổ!`);
+        else if (status === 'cancelled') showToast('info', `🚫 ${surgery?.patient_name || ''} — Đã hủy dự kiến mổ!`);
       }
     }
-    const surgery = surgeries.find(s => s.id === id);
-    const { error } = await updateSurgery(id, { status });
-    if (error) {
-      showToast('error', `❌ Lỗi: ${error.message || JSON.stringify(error)}`);
-      return;
-    }
-    
-    if (status === 'completed') showToast('success', `✅ ${surgery?.patient_name || ''} — Đã mổ xong!`);
-    else if (status === 'postponed') showToast('info', `⏸️ ${surgery?.patient_name || ''} — Đã hoãn dự kiến mổ!`);
-    else if (status === 'cancelled') showToast('info', `🚫 ${surgery?.patient_name || ''} — Đã hủy dự kiến mổ!`);
-  }, [surgeries, updateSurgery, showToast, isAuthenticated, can, isUnlocked]);
+  }, [surgeries, updateSurgery, showToast, isAuthenticated, can, isUnlocked, triggerPasscodeLock]);
 
   // Connection toast
   useEffect(() => {
@@ -532,8 +598,12 @@ function App() {
       .filter(matchesSearch)
       .sort((a, b) => (a.order_in_shift || 999) - (b.order_in_shift || 999));
 
-    const tasks = {};
-    matchedSurgeries.forEach(s => { tasks[s.id] = s; });
+    const tasks = Object.create(null);
+    matchedSurgeries.forEach(s => {
+      if (s.id && s.id !== '__proto__' && s.id !== 'constructor') {
+        Reflect.set(tasks, s.id, s);
+      }
+    });
 
     return {
       ...boardState,
@@ -617,11 +687,11 @@ function App() {
           </div>
         ) : connectionError ? (
           <div className="error-screen glass-panel">
-            <div className="error-title">Không tải được bảng dự kiến mổ</div>
+            <div className="error-title">{ 'Không tải được bảng dự kiến mổ' }</div>
             <div className="error-text">
-              Supabase đã được cấu hình nhưng đang lỗi kết nối hoặc truy vấn. App không chuyển sang dữ liệu demo để tránh nhầm với dữ liệu thật.
+              { 'Supabase đã được cấu hình nhưng đang lỗi kết nối hoặc truy vấn. App không chuyển sang dữ liệu demo để tránh nhầm với dữ liệu thật.' }
             </div>
-            <button className="btn-primary" onClick={refresh}>Thử tải lại</button>
+            <button className="btn-primary" onClick={refresh}>{ 'Thử tải lại' }</button>
           </div>
         ) : (
           <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
@@ -686,6 +756,15 @@ function App() {
       <LoginModal 
         isOpen={loginModalOpen} 
         onClose={() => setLoginModalOpen(false)} 
+      />
+
+      {/* Passcode Modal (safeguards) */}
+      <PasscodeModal
+        key={passcodeModalOpen ? 'open' : 'closed'}
+        isOpen={passcodeModalOpen}
+        onClose={() => setPasscodeModalOpen(false)}
+        onConfirm={onPasscodeSuccess}
+        actionLabel={passcodeActionLabel}
       />
     </div>
   );
