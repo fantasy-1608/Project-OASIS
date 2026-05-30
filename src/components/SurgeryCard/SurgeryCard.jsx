@@ -13,7 +13,7 @@ const PRIORITY_CONFIG = {
 export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSchedule, onMarkStatus, provided, isDragging }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const isExtension = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
+  const isExtension = typeof chrome !== 'undefined' && window.location.protocol === 'chrome-extension:';
   const priority = PRIORITY_CONFIG[surgery.priority] || PRIORITY_CONFIG.elective;
   const isWaiting = surgery.shift === 'waiting';
   const readiness = evaluateSurgeryReadiness(surgery);
@@ -69,7 +69,8 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
       style={provided?.draggableProps?.style}
       onClick={() => setIsExpanded(v => !v)}
       onDoubleClick={() => {
-        if (typeof chrome !== 'undefined' && chrome.tabs) {
+        const isExtensionContext = typeof chrome !== 'undefined' && window.location.protocol === 'chrome-extension:';
+        if (isExtensionContext && chrome.tabs) {
           chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs && tabs.length > 0) {
               chrome.tabs.sendMessage(tabs[0].id, {
@@ -107,7 +108,8 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
               }} 
               onClick={(e) => {
                 e.stopPropagation();
-                if (typeof chrome !== 'undefined' && chrome.tabs) {
+                const isExtensionContext = typeof chrome !== 'undefined' && window.location.protocol === 'chrome-extension:';
+                if (isExtensionContext && chrome.tabs) {
                   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                     if (tabs && tabs.length > 0) {
                       chrome.tabs.sendMessage(tabs[0].id, {

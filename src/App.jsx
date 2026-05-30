@@ -97,7 +97,8 @@ function App() {
 
   // ---- Extension Integration ----
   useEffect(() => {
-    if (typeof chrome !== 'undefined' && chrome.tabs) {
+    const isExtensionContext = typeof chrome !== 'undefined' && window.location.protocol === 'chrome-extension:';
+    if (isExtensionContext && chrome.tabs) {
       const morningCount = (boardState.columns['morning']?.taskIds || []).length;
       const afternoonCount = (boardState.columns['afternoon']?.taskIds || []).length;
       chrome.tabs.query({ url: '*://*.vncare.vn/*' }, (tabs) => {
@@ -112,6 +113,7 @@ function App() {
   }, [boardState, dateStr]);
 
   useEffect(() => {
+    const isExtensionContext = typeof chrome !== 'undefined' && window.location.protocol === 'chrome-extension:';
     const handleMessage = (msg) => {
       if (msg.type === 'OASIS_OPEN_ADD_SURGERY') {
         if (isEnabled('AUTH_ENABLED')) {
@@ -141,7 +143,7 @@ function App() {
         setModalOpen(true);
       }
     };
-    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+    if (isExtensionContext && chrome.runtime?.onMessage) {
       chrome.runtime.onMessage.addListener(handleMessage);
       
       // Check if there is pending surgery data from before the sidebar opened
@@ -182,10 +184,10 @@ function App() {
           }
         });
       } // closes if (chrome.storage && chrome.storage.local)
-    } // closes if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage)
+    } // closes if (isExtensionContext && chrome.runtime?.onMessage)
       
     return () => {
-      if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+      if (isExtensionContext && chrome.runtime?.onMessage) {
         chrome.runtime.onMessage.removeListener(handleMessage);
       }
     };
