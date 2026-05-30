@@ -101,14 +101,13 @@ export function Header({
           <span className="cases-count-label">ca</span>
         </div>
 
-        <div className="search-box" style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', padding: '4px 8px', gap: '6px' }}>
-          <Search size={14} color="var(--text-muted)" />
+        <div className="search-box">
+          <Search size={14} />
           <input 
             type="text" 
             placeholder="Tìm tên, mã BN..." 
             value={searchQuery} 
             onChange={e => onSearchChange(e.target.value)}
-            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none', width: '120px', fontSize: '12px' }}
           />
         </div>
 

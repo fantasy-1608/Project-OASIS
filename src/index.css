@@ -1505,3 +1505,56 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
   background: #ffffff !important;
   border: 1px solid var(--border-default) !important;
 }
+
+/* VNPT HIS v2 Premium Glassmorphic Search Box styling */
+.app-header .search-box {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 6px !important;
+  padding: 4px 10px !important;
+  gap: 8px !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.app-header .search-box:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.app-header .search-box:focus-within {
+  background: rgba(255, 255, 255, 0.22) !important;
+  border-color: rgba(255, 255, 255, 0.7) !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15) !important;
+}
+
+.app-header .search-box input {
+  background: transparent !important;
+  border: none !important;
+  color: #ffffff !important;
+  outline: none !important;
+  width: 120px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  padding: 0 !important;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.app-header .search-box input:focus {
+  width: 160px !important; /* Premium expand-on-focus micro-interaction */
+}
+
+.app-header .search-box input::placeholder {
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-weight: 400 !important;
+}
+
+.app-header .search-box svg {
+  color: rgba(255, 255, 255, 0.8) !important;
+  transition: color 0.25s ease !important;
+}
+
+.app-header .search-box:focus-within svg {
+  color: #ffffff !important;
+}
