@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { MOCK_SURGERIES, buildInitialBoardState } from '../lib/mockData';
-import { decryptSurgery } from '../lib/crypto';
 import { packExtras, unpackExtras } from '../lib/surgeryExtras';
 import { getEditToken } from '../lib/editSession';
 
@@ -53,19 +52,6 @@ async function invokeSurgeryRead() {
   return { data: data?.data || [], error: null };
 }
 
-async function readSurgeriesDirectFallback() {
-  const { data, error } = await supabase
-    .from('surgeries')
-    .select('*')
-    .order('order_in_shift', { ascending: true });
-  if (error) return { error };
-  try {
-    return { data: (data || []).map(row => unpackExtras(decryptSurgery(row))), error: null };
-  } catch (err) {
-    return { error: err };
-  }
-}
-
 export function useSurgeries(date) {
   const [surgeries, setSurgeries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -88,9 +74,7 @@ export function useSurgeries(date) {
         return;
       }
 
-      const fallback = await readSurgeriesDirectFallback();
-      if (fallback.error) throw error;
-      setSurgeries(fallback.data || []);
+      throw error;
     } catch (error) {
       setConnectionError(error);
       setSurgeries([]);
