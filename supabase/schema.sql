@@ -56,14 +56,39 @@ alter table surgeries add constraint surgeries_status_check
 -- 4. Enable Realtime
 alter publication supabase_realtime add table surgeries;
 
--- 5. Row Level Security (cho phép tất cả khi dùng anon key — điều chỉnh theo nhu cầu)
+-- 5. Row Level Security
 alter table surgeries enable row level security;
 alter table surgeons enable row level security;
 alter table operating_rooms enable row level security;
 
-create policy "Allow all" on surgeries for all using (true) with check (true);
-create policy "Allow all" on surgeons for all using (true) with check (true);
-create policy "Allow all" on operating_rooms for all using (true) with check (true);
+drop policy if exists "Allow all" on surgeries;
+drop policy if exists "Allow all" on surgeons;
+drop policy if exists "Allow all" on operating_rooms;
+
+create policy "anon_read_surgeries" on surgeries
+  for select to anon, authenticated using (true);
+
+create policy "anon_read_surgeons" on surgeons
+  for select to anon, authenticated using (true);
+
+create policy "anon_read_operating_rooms" on operating_rooms
+  for select to anon, authenticated using (true);
+
+create table if not exists edit_unlock_attempts (
+  id uuid primary key default gen_random_uuid(),
+  client_fingerprint text not null,
+  success boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_edit_unlock_attempts_fingerprint_created
+  on edit_unlock_attempts (client_fingerprint, created_at desc);
+
+alter table edit_unlock_attempts enable row level security;
+
+create policy "No direct client access to edit unlock attempts"
+  on edit_unlock_attempts
+  for all using (false) with check (false);
 
 -- 6. Seed dữ liệu ban đầu
 insert into surgeons (id, name, specialty, avatar, max_cases_per_day) values

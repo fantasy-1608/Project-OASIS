@@ -9,13 +9,32 @@
  * KHÔNG thêm logic mới vào App.jsx cho đến khi flag tương ứng = true.
  *
  * Thứ tự khuyến nghị bật:
- *   GĐ 1: NORMALIZED_SCHEMA → AUDIT_LOG_ENABLED → AUTH_ENABLED
+ *   GĐ 1: SHARED_EDIT_PASSCODE → DIRECT_CLIENT_WRITE=false
+ *   GĐ 2: NORMALIZED_SCHEMA → AUDIT_LOG_ENABLED → AUTH_ENABLED
  *   GĐ 2: CAPACITY_RULES → SURGEON_AVAILABILITY → SCHEDULER_ENGINE → OPERATIONS_DASHBOARD
  *   GĐ 3: AI_SCHEDULING → OVERLOAD_FORECAST → HIS_SYNC_PHASE2
  * ============================================================
  */
 
 export const FEATURES = {
+  // ----------------------------------------------------------
+  // GIAI ĐOẠN 0 — Security hardening không đổi workflow
+  // ----------------------------------------------------------
+
+  /**
+   * SHARED_EDIT_PASSCODE
+   * Khi true: người dùng vẫn nhập một mật khẩu chung để mở khóa chỉnh sửa,
+   * nhưng mật khẩu được xác minh ở Supabase Edge Function thay vì frontend.
+   */
+  SHARED_EDIT_PASSCODE: true,
+
+  /**
+   * DIRECT_CLIENT_WRITE
+   * Phải giữ false trong production: frontend không ghi trực tiếp vào bảng
+   * surgeries bằng anon key, mọi write đi qua oasis-surgery-api + edit token.
+   */
+  DIRECT_CLIENT_WRITE: false,
+
   // ----------------------------------------------------------
   // GIAI ĐOẠN 1 — Nền Móng (Schema + Auth + Audit)
   // ----------------------------------------------------------

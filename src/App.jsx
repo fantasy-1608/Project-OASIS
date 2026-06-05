@@ -13,6 +13,7 @@ import { useAuth } from './hooks/useAuth';
 import { LoginModal } from './components/Auth/LoginModal';
 import { PasscodeModal } from './components/Modal/PasscodeModal';
 import { isEnabled } from './lib/featureFlags';
+import { clearEditSession, hasValidEditSession, verifyEditPasscode } from './lib/editSession';
 import { evaluateSurgeryReadiness, formatReadinessMissingText } from './lib/readiness';
 import { format } from 'date-fns';
 import './index.css';
@@ -54,7 +55,7 @@ function App() {
   } = useAuth();
   
   const [loginModalOpen, setLoginModalOpen] = useState(false);
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(() => hasValidEditSession());
 
   // Custom passcode modal state (replaces window.prompt)
   const [passcodeModalOpen, setPasscodeModalOpen] = useState(false);
@@ -107,6 +108,13 @@ function App() {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
+  const handlePasscodeConfirm = useCallback(async (passcode) => {
+    await verifyEditPasscode(passcode);
+    setIsUnlocked(true);
+    showToast('success', 'Đã mở khóa!');
+    onPasscodeSuccess?.();
+  }, [onPasscodeSuccess, showToast]);
+
   // ---- Extension Integration ----
   useEffect(() => {
     const isExtensionContext = typeof chrome !== 'undefined' && window.location.protocol === 'chrome-extension:';
@@ -140,14 +148,12 @@ function App() {
           }
         } else {
           if (!isUnlockedRef.current) {
-            const pwd = window.prompt('Nhập mã mở khóa để thêm dự kiến mổ:');
-            if (pwd === 'CTCH') {
-              setIsUnlocked(true);
-              showToast('success', 'Đã mở khóa!');
-            } else {
-              if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
-              return;
-            }
+            triggerPasscodeLock('để thêm dự kiến mổ', () => {
+              setEditingSurgery(msg.payload);
+              setDefaultShift(msg.payload.priority === 'urgent' ? 'morning' : 'waiting');
+              setModalOpen(true);
+            });
+            return;
           }
         }
         setEditingSurgery(msg.payload);
@@ -175,16 +181,11 @@ function App() {
               }
             } else {
               if (!isUnlockedRef.current) {
-                const pwd = window.prompt('Nhập mã mở khóa để thêm dự kiến mổ:');
-                if (pwd === 'CTCH') {
-                  setIsUnlocked(true);
-                  showToast('success', 'Đã mở khóa!');
+                triggerPasscodeLock('để thêm dự kiến mổ', () => {
                   setEditingSurgery(result.oasis_pending_surgery);
                   setDefaultShift(result.oasis_pending_surgery.priority === 'urgent' ? 'morning' : 'waiting');
                   setModalOpen(true);
-                } else {
-                  if (pwd !== null) showToast('error', 'Mật khẩu không đúng!');
-                }
+                });
               } else {
                 setEditingSurgery(result.oasis_pending_surgery);
                 setDefaultShift(result.oasis_pending_surgery.priority === 'urgent' ? 'morning' : 'waiting');
@@ -203,7 +204,7 @@ function App() {
         chrome.runtime.onMessage.removeListener(handleMessage);
       }
     };
-  }, [showToast]);
+  }, [showToast, triggerPasscodeLock]);
 
 
 
@@ -238,12 +239,11 @@ function App() {
       }
     } else {
       if (isUnlocked) {
+        clearEditSession();
         setIsUnlocked(false);
         showToast('info', 'Đã khóa chế độ chỉnh sửa');
       } else {
         triggerPasscodeLock('để mở khóa chế độ chỉnh sửa', () => {
-          setIsUnlocked(true);
-          showToast('success', 'Đã mở khóa!');
         });
       }
     }
@@ -305,7 +305,12 @@ function App() {
       targetTaskIds.splice(destination.index, 0, draggableId);
     }
 
-    moveSurgery(draggableId, targetShift, targetTaskIds, sourceShift, sourceTaskIds);
+    Promise.resolve(moveSurgery(draggableId, targetShift, targetTaskIds, sourceShift, sourceTaskIds))
+      .then((result) => {
+        if (result?.error) {
+          showToast('error', `❌ Lỗi chuyển ca: ${result.error.message || JSON.stringify(result.error)}`);
+        }
+      });
 
     if (targetShift !== 'waiting' && sourceShift === 'waiting') {
       const shiftLabel = targetShift === 'morning' ? 'Ca Sáng' : 'Ca Chiều';
@@ -763,7 +768,7 @@ function App() {
         key={passcodeModalOpen ? 'open' : 'closed'}
         isOpen={passcodeModalOpen}
         onClose={() => setPasscodeModalOpen(false)}
-        onConfirm={onPasscodeSuccess}
+        onConfirm={handlePasscodeConfirm}
         actionLabel={passcodeActionLabel}
       />
     </div>

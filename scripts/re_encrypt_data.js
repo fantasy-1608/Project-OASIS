@@ -8,13 +8,13 @@
  *           sang format mới (AES-256-CBC + random IV)
  * 
  * Cách chạy:
- *   node scripts/re_encrypt_data.js
+ *   SUPABASE_SERVICE_KEY=... OASIS_CRYPTO_SECRET=... OASIS_LEGACY_CRYPTO_SECRET=... node scripts/re_encrypt_data.js
  * 
  * Quy trình:
  *   1. Fetch toàn bộ data từ Supabase
- *   2. Decrypt bằng legacy key ('CTCH' passphrase mode)
+ *   2. Decrypt bằng legacy key từ OASIS_LEGACY_CRYPTO_SECRET
  *   3. Re-encrypt bằng new format (SHA256(key) + random IV)
- *   4. Update lại Supabase
+ *   4. Update lại Supabase bằng service role key
  * 
  * LƯU Ý: 
  *   - Script này IDEMPOTENT — chạy nhiều lần không sao
@@ -29,9 +29,9 @@ import CryptoJS from 'crypto-js';
 
 // ---- Config ----
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
-const SECRET_KEY = process.env.VITE_CRYPTO_SECRET || 'CTCH';
-const LEGACY_KEY = 'CTCH';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
+const SECRET_KEY = process.env.OASIS_CRYPTO_SECRET || process.env.VITE_CRYPTO_SECRET;
+const LEGACY_KEY = process.env.OASIS_LEGACY_CRYPTO_SECRET;
 
 const PHI_FIELDS = [
   'patient_name',
@@ -44,7 +44,12 @@ const PHI_FIELDS = [
 ];
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error('❌ Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env');
+  console.error('❌ Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_KEY in .env');
+  process.exit(1);
+}
+
+if (!SECRET_KEY || !LEGACY_KEY) {
+  console.error('❌ Missing OASIS_CRYPTO_SECRET/VITE_CRYPTO_SECRET or OASIS_LEGACY_CRYPTO_SECRET.');
   process.exit(1);
 }
 

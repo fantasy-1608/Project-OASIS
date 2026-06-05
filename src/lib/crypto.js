@@ -4,7 +4,7 @@ import CryptoJS from 'crypto-js';
 // PROJECT OASIS — Mã hóa thông tin bệnh nhân (PHI Encryption)
 // ============================================================
 // Phase 1: AES-256-CBC + Random IV per encryption
-// - Key từ env var, fallback 'CTCH' cho backward compat
+// - Key từ env var hoặc sessionStorage, không có fallback hard-code
 // - Tự nhận biết data cũ (passphrase mode) vs mới (iv:ciphertext)
 // - Mở rộng danh sách field nhạy cảm
 // ============================================================
@@ -14,11 +14,12 @@ export function getSecretKey() {
     const sessionKey = sessionStorage.getItem('OASIS_DECRYPTION_KEY');
     if (sessionKey) return sessionKey;
   }
-  return import.meta.env.VITE_CRYPTO_SECRET || 'CTCH';
+  const envKey = import.meta.env.VITE_CRYPTO_SECRET;
+  if (envKey) return envKey;
+  throw new Error('Missing VITE_CRYPTO_SECRET. Refusing to encrypt PHI without a configured key.');
 }
 
-// Legacy key cho backward compatibility (data đã encrypt trước Phase 1)
-const LEGACY_KEY = 'CTCH';
+const LEGACY_KEY = import.meta.env.VITE_LEGACY_CRYPTO_SECRET || '';
 
 /**
  * Danh sách field nhạy cảm (PHI — Protected Health Information)
@@ -61,7 +62,7 @@ export function encryptData(text) {
     return iv.toString(CryptoJS.enc.Hex) + ':' + encrypted.toString();
   } catch (error) {
     console.error('[Crypto] Lỗi mã hoá:', error);
-    return text;
+    throw error;
   }
 }
 
@@ -94,9 +95,11 @@ export function decryptData(encryptedText) {
     }
 
     // ---- Format cũ: CryptoJS passphrase mode ----
-    const bytes = CryptoJS.AES.decrypt(encryptedText, LEGACY_KEY);
-    const result = bytes.toString(CryptoJS.enc.Utf8);
-    if (result) return result;
+    if (LEGACY_KEY) {
+      const bytes = CryptoJS.AES.decrypt(encryptedText, LEGACY_KEY);
+      const result = bytes.toString(CryptoJS.enc.Utf8);
+      if (result) return result;
+    }
 
     // Không giải mã được → trả nguyên (dữ liệu plaintext hoặc format lạ)
     return encryptedText;

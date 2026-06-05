@@ -3,7 +3,8 @@ import { X, Lock, ShieldAlert } from 'lucide-react';
 
 export function PasscodeModal({ isOpen, onClose, onConfirm, actionLabel = 'để chỉnh sửa hệ thống' }) {
   const [passcode, setPasscode] = useState('');
-  const [error, setError] = useState(false);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -17,17 +18,21 @@ export function PasscodeModal({ isOpen, onClose, onConfirm, actionLabel = 'để
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!passcode) return;
+    if (!passcode || submitting) return;
 
-    if (passcode === 'CTCH') {
-      onConfirm(passcode);
+    try {
+      setSubmitting(true);
+      setError('');
+      await onConfirm(passcode);
       onClose();
-    } else {
-      setError(true);
+    } catch (err) {
+      setError(err?.message || 'Mật khẩu không chính xác!');
       setPasscode('');
       inputRef.current?.focus();
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -59,9 +64,10 @@ export function PasscodeModal({ isOpen, onClose, onConfirm, actionLabel = 'để
                 className={`form-input ${error ? 'form-input--error' : ''}`}
                 placeholder={ 'Nhập mã bảo mật...' }
                 value={passcode}
+                disabled={submitting}
                 onChange={(e) => {
                   setPasscode(e.target.value);
-                  if (error) setError(false);
+                  if (error) setError('');
                 }}
                 style={{
                   textAlign: 'center',
@@ -88,7 +94,7 @@ export function PasscodeModal({ isOpen, onClose, onConfirm, actionLabel = 'để
                 justifyContent: 'center'
               }}>
                 <ShieldAlert size={14} />
-                <span>{ 'Mật khẩu không chính xác!' }</span>
+                <span>{error}</span>
               </div>
             )}
 
@@ -96,8 +102,8 @@ export function PasscodeModal({ isOpen, onClose, onConfirm, actionLabel = 'để
               <button type="button" className="btn-secondary" onClick={onClose} style={{ width: '100%', justifyContent: 'center', padding: '8px 0', borderRadius: '6px' }}>
                 { 'Hủy bỏ' }
               </button>
-              <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '8px 0', borderRadius: '6px' }}>
-                { 'Mở khóa' }
+              <button type="submit" className="btn-primary" disabled={submitting} style={{ width: '100%', justifyContent: 'center', padding: '8px 0', borderRadius: '6px' }}>
+                {submitting ? 'Đang xác minh...' : 'Mở khóa'}
               </button>
             </div>
           </div>

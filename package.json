@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "release": "pnpm build && cd dist && zip -r ../project-oasis-v$npm_package_version.zip ./*"
+    "release": "pnpm build && cd dist && zip -r ../project-oasis-v$npm_package_version.zip ./*",
+    "smoke:supabase": "node scripts/smoke_oasis_edge.mjs"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",

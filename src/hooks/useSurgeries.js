@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { MOCK_SURGERIES, buildInitialBoardState } from '../lib/mockData';
-import { encryptSurgery, decryptSurgery, encryptFields } from '../lib/crypto';
+import { decryptSurgery } from '../lib/crypto';
 import { packExtras, unpackExtras } from '../lib/surgeryExtras';
+import { getEditToken } from '../lib/editSession';
 
 // Các cột được xác nhận tồn tại trên Supabase
 const KNOWN_DB_COLUMNS = [
   'id', 'patient_name', 'diagnosis', 'priority', 'shift', 'date',
   'patient_id', 'status', 'order_in_shift', 'surgeon_id', 'room_id',
   'gender', 'birth_year', 'age',
+  'procedure', 'start_time', 'duration_minutes', 'anesthesia', 'equipment',
   'notes', 'created_at', 'updated_at',
 ];
 
@@ -20,6 +22,50 @@ function stripUnknownColumns(obj) {
   return clean;
 }
 
+async function invokeSurgeryWrite(action, payload) {
+  const editToken = getEditToken();
+  if (!editToken) {
+    return { error: new Error('Phiên mở khóa đã hết hạn. Vui lòng mở khóa lại.') };
+  }
+
+  const { data, error } = await supabase.functions.invoke('oasis-surgery-api', {
+    body: {
+      action,
+      editToken,
+      ...payload,
+    },
+  });
+
+  if (error) return { error };
+  if (data?.error) return { error: new Error(data.error) };
+  return { data: data?.data ?? data, error: null };
+}
+
+async function invokeSurgeryRead() {
+  const { data, error } = await supabase.functions.invoke('oasis-surgery-api', {
+    body: {
+      action: 'read_surgeries',
+    },
+  });
+
+  if (error) return { error };
+  if (data?.error) return { error: new Error(data.error) };
+  return { data: data?.data || [], error: null };
+}
+
+async function readSurgeriesDirectFallback() {
+  const { data, error } = await supabase
+    .from('surgeries')
+    .select('*')
+    .order('order_in_shift', { ascending: true });
+  if (error) return { error };
+  try {
+    return { data: (data || []).map(row => unpackExtras(decryptSurgery(row))), error: null };
+  } catch (err) {
+    return { error: err };
+  }
+}
+
 export function useSurgeries(date) {
   const [surgeries, setSurgeries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,19 +75,22 @@ export function useSurgeries(date) {
   // ---- FETCH ----
   const fetchSurgeries = useCallback(async () => {
     if (!isSupabaseConfigured) {
-      setSurgeries(MOCK_SURGERIES.map(decryptSurgery));
+      setSurgeries(MOCK_SURGERIES);
       setLoading(false);
       return;
     }
     try {
       setLoading(true);
       setConnectionError(null);
-      const { data, error } = await supabase
-        .from('surgeries')
-        .select('*')
-        .order('order_in_shift', { ascending: true });
-      if (error) throw error;
-      setSurgeries((data || []).map(d => unpackExtras(decryptSurgery(d))));
+      const { data, error } = await invokeSurgeryRead();
+      if (!error) {
+        setSurgeries((data || []).map(d => unpackExtras(d)));
+        return;
+      }
+
+      const fallback = await readSurgeriesDirectFallback();
+      if (fallback.error) throw error;
+      setSurgeries(fallback.data || []);
     } catch (error) {
       setConnectionError(error);
       setSurgeries([]);
@@ -82,9 +131,8 @@ export function useSurgeries(date) {
     // Pack extras → strip → encrypt → send
     const packed = packExtras(newSurgery);
     const dbSurgery = stripUnknownColumns(packed);
-    const encryptedSurgery = encryptSurgery(dbSurgery);
-    const { data, error } = await supabase.from('surgeries').insert([encryptedSurgery]).select().single();
-    if (!error) setSurgeries(prev => [...prev, unpackExtras(decryptSurgery(data))]);
+    const { data, error } = await invokeSurgeryWrite('create_surgery', { record: dbSurgery });
+    if (!error) setSurgeries(prev => [...prev, unpackExtras(data)]);
     return { data, error };
   }, [date]);
 
@@ -108,12 +156,12 @@ export function useSurgeries(date) {
     // Luôn gửi notes vì extras có thể đã thay đổi
     toSend.notes = packed.notes || null;
 
-    // Encrypt tất cả PHI fields trong toSend
-    const encryptedToSend = encryptFields(toSend);
-
-    const { error } = await supabase.from('surgeries').update(encryptedToSend).eq('id', id);
-    if (!error) setSurgeries(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
-    return { error };
+    const { data, error } = await invokeSurgeryWrite('update_surgery', { id, updates: toSend });
+    if (!error) {
+      const updated = data ? unpackExtras(data) : { ...merged, ...updates };
+      setSurgeries(prev => prev.map(s => s.id === id ? updated : s));
+    }
+    return { data, error };
   }, [surgeries]);
 
   const deleteSurgery = useCallback(async (id) => {
@@ -121,7 +169,7 @@ export function useSurgeries(date) {
       setSurgeries(prev => prev.filter(s => s.id !== id));
       return { error: null };
     }
-    const { error } = await supabase.from('surgeries').delete().eq('id', id);
+    const { error } = await invokeSurgeryWrite('delete_surgery', { id });
     if (!error) setSurgeries(prev => prev.filter(s => s.id !== id));
     return { error };
   }, []);
@@ -161,23 +209,26 @@ export function useSurgeries(date) {
     // 3. Send updates to Supabase asynchronously
     if (!isSupabaseConfigured) return;
 
-    Object.entries(updatesMap).forEach(async ([taskId, merged]) => {
+    const updates = Object.entries(updatesMap).map(([taskId, merged]) => {
       const packed = packExtras(merged);
       const toSend = {};
-      // Lấy tất cả column changes 
+      // Lấy tất cả column changes
       for (const key of KNOWN_DB_COLUMNS) {
         if (merged[key] !== undefined) toSend[key] = packed[key];
       }
       toSend.notes = packed.notes || null;
 
-      // Encrypt tất cả PHI fields
-      const encryptedToSend = encryptFields(toSend);
-
-      // Fire and forget update
-      await supabase.from('surgeries').update(encryptedToSend).eq('id', taskId);
+      return { id: taskId, updates: toSend };
     });
 
-  }, [surgeries, date]);
+    const { error } = await invokeSurgeryWrite('move_surgery', { updates });
+    if (error) {
+      await fetchSurgeries();
+      return { error };
+    }
+    return { error: null };
+
+  }, [surgeries, date, fetchSurgeries]);
 
   // ---- BOARD STATE ----
   const boardState = buildInitialBoardState(surgeries, date);

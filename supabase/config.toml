@@ -1,0 +1,4 @@
+project_id = "pbhcarypxwpxmusgtylj"
+
+[functions.oasis-surgery-api]
+verify_jwt = true
