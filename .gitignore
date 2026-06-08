@@ -31,3 +31,4 @@ dist-ssr
 *.sw?
 .gitnexus
 .vercel
+scratch/
