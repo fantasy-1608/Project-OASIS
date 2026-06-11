@@ -18,6 +18,10 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
   const isWaiting = surgery.shift === 'waiting';
   const readiness = evaluateSurgeryReadiness(surgery);
   const readinessMissingText = readiness.status === 'missing' ? formatReadinessMissingText(readiness, 5) : '';
+  const demographics = [surgery.gender, surgery.birth_year || surgery.age].filter(Boolean).join(' • ');
+  const readinessTitle = readinessMissingText
+    ? `${readiness.label}: thiếu ${readinessMissingText}`
+    : readiness.label;
 
   const handleEdit = useCallback((e) => { e.stopPropagation(); onEdit?.(surgery); }, [surgery, onEdit]);
   const handleDelete = useCallback((e) => {
@@ -88,7 +92,7 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
           <span className="priority-badge" style={{ color: priority.color, background: priority.bg, border: `1px solid ${priority.border}` }}>
             {priority.label}
           </span>
-          <span className={`readiness-badge readiness-badge--${readiness.status}`}>
+          <span className={`readiness-badge readiness-badge--${readiness.status}`} title={readinessTitle}>
             {readiness.status === 'missing' ? `Thiếu ${readiness.missingItems.length}` : readiness.label}
           </span>
           {!isWaiting && surgery.date && (
@@ -130,9 +134,8 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
 
       {/* Patient name */}
       <div className="card-patient-name">{surgery.patient_name}</div>
-      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', marginBottom: '8px', fontSize: '11px', color: 'var(--text-muted)' }}>
-        {surgery.gender && <span>{surgery.gender},</span>}
-        {(surgery.birth_year || surgery.age) && <span>{surgery.birth_year || surgery.age},</span>}
+      <div className="card-patient-meta">
+        {demographics && <span>{demographics}</span>}
         <span className="card-pid">Mã BA: {surgery.patient_id}</span>
       </div>
 
@@ -179,6 +182,9 @@ export function SurgeryCard({ surgery, onEdit, onDelete, onMoveToWaiting, onSche
             </div>
             {readinessMissingText && (
               <div className="card-readiness-missing">Thiếu: {readinessMissingText}</div>
+            )}
+            {!readinessMissingText && readiness.status === 'ready' && (
+              <div className="card-readiness-missing card-readiness-missing--muted">Đã kiểm đủ hồ sơ trước mổ</div>
             )}
           </div>
 

@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 import { SurgeryCard } from '../SurgeryCard/SurgeryCard';
-import { Plus, Sunrise, Sunset } from 'lucide-react';
+import { ArrowRight, CalendarDays, Plus, Sunrise, Sunset } from 'lucide-react';
 
 // ── Waiting list column (vertical, left side) ──────────────────
-function WaitingColumn({ tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onSchedule, onMarkStatus, isUnlocked }) {
+function WaitingColumn({ tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onSchedule, onMarkStatus, isUnlocked, compactWhenEmpty = false }) {
   return (
-    <div className="waiting-panel glass-panel">
+    <div className={`waiting-panel glass-panel ${compactWhenEmpty ? 'waiting-panel--empty' : ''}`}>
       <div className="waiting-header">
         <div className="waiting-title-row">
           <span className="waiting-icon">📋</span>
@@ -55,6 +55,28 @@ function WaitingColumn({ tasks, onEdit, onDelete, onAddNew, onMoveToWaiting, onS
           <Plus size={15} /> Thêm dự kiến
         </button>
       )}
+    </div>
+  );
+}
+
+function DayHintBanner({ hint }) {
+  if (!hint) return null;
+
+  return (
+    <div className="day-hint-banner">
+      <div className="day-hint-icon">
+        <CalendarDays size={18} />
+      </div>
+      <div className="day-hint-copy">
+        <div className="day-hint-title">Ngày đang xem chưa có ca mổ</div>
+        <div className="day-hint-text">
+          Có {hint.count} ca dự kiến vào ngày {hint.label}.
+        </div>
+      </div>
+      <button type="button" className="day-hint-action" onClick={hint.onJump}>
+        Xem ngày {hint.label}
+        <ArrowRight size={14} />
+      </button>
     </div>
   );
 }
@@ -151,7 +173,7 @@ function ShiftRow({ shiftId, tasks, onEdit, onDelete, onAddNew, onMoveToWaiting,
 }
 
 // ── Main Board ─────────────────────────────────────────────────
-export function Board({ boardState, onEdit, onDelete, onAddNew, onMoveToWaiting, onSchedule, onMarkStatus, isUnlocked }) {
+export function Board({ boardState, onEdit, onDelete, onAddNew, onMoveToWaiting, onSchedule, onMarkStatus, isUnlocked, emptyDayHint }) {
   const waitingTasks = (boardState.columns['waiting']?.taskIds || []).map(id => boardState.tasks[id]).filter(Boolean);
   const morningTasks = (boardState.columns['morning']?.taskIds || []).map(id => boardState.tasks[id]).filter(Boolean);
   const afternoonTasks = (boardState.columns['afternoon']?.taskIds || []).map(id => boardState.tasks[id]).filter(Boolean);
@@ -168,6 +190,7 @@ export function Board({ boardState, onEdit, onDelete, onAddNew, onMoveToWaiting,
   if (!isWide) {
     return (
       <div className="board-layout-mobile">
+        <DayHintBanner hint={emptyDayHint} />
         <div className="mobile-tabs">
           <button className={`mobile-tab ${activeTab === 'waiting' ? 'active' : ''}`} onClick={() => setActiveTab('waiting')}>
             Chờ <span className="tab-badge">{waitingTasks.length}</span>
@@ -186,6 +209,7 @@ export function Board({ boardState, onEdit, onDelete, onAddNew, onMoveToWaiting,
               onEdit={onEdit} onDelete={onDelete} onAddNew={onAddNew} 
               onMoveToWaiting={onMoveToWaiting} onSchedule={onSchedule} onMarkStatus={onMarkStatus}
               isUnlocked={isUnlocked}
+              compactWhenEmpty={false}
             />
           )}
           {activeTab === 'morning' && (
@@ -217,10 +241,12 @@ export function Board({ boardState, onEdit, onDelete, onAddNew, onMoveToWaiting,
         onEdit={onEdit} onDelete={onDelete} onAddNew={onAddNew} 
         onMoveToWaiting={onMoveToWaiting} onSchedule={onSchedule} onMarkStatus={onMarkStatus}
         isUnlocked={isUnlocked}
+        compactWhenEmpty={waitingTasks.length === 0}
       />
 
       {/* Shifts */}
       <div className="shift-rows-area">
+        <DayHintBanner hint={emptyDayHint} />
         <ShiftRow 
           shiftId="morning" tasks={morningTasks} 
           onEdit={onEdit} onDelete={onDelete} onAddNew={onAddNew} 

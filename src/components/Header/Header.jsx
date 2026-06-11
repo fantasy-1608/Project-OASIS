@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Wifi, WifiOff, RefreshCw, Plus, CalendarDays, Lock, Unlock, LayoutDashboard, List, Search, Printer } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Wifi, WifiOff, RefreshCw, Plus, CalendarDays, Lock, Unlock, LayoutDashboard, List, Search, Printer, MoreHorizontal } from 'lucide-react';
 import { format, addDays, isToday, isYesterday, isTomorrow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -19,6 +19,8 @@ export function Header({
   onAddNew, 
   onRefresh, 
   totalCases, 
+  currentDayCases = totalCases,
+  weekCases = totalCases,
   onOpenCalendar, 
   onOpenHistory, 
   isUnlocked, 
@@ -33,6 +35,7 @@ export function Header({
   isAuthenticated
 }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -48,6 +51,8 @@ export function Header({
   const todayLabel = formatDateLabel(currentDate);
   const weekday = format(currentDate, 'EEEE', { locale: vi });
   const fullDate = format(currentDate, 'dd MMMM yyyy', { locale: vi });
+  const counterLabel = currentDayCases === 1 ? 'ca ngày này' : 'ca ngày này';
+  const weekLabel = weekCases === 1 ? '1 ca tuần' : `${weekCases} ca tuần`;
 
   // Map Vietnamese role name for display
   const getRoleLabel = (r) => {
@@ -95,10 +100,10 @@ export function Header({
           <span>{isOnline ? 'Dữ liệu khoa' : 'Demo'}</span>
         </div>
 
-        {/* Cases count */}
-        <div className="cases-counter">
-          <span className="cases-count-number">{totalCases}</span>
-          <span className="cases-count-label">ca</span>
+        <div className="cases-counter" title={`${currentDayCases} ca trong ngày đang xem, ${weekCases} ca trong tuần`}>
+          <span className="cases-count-number">{currentDayCases}</span>
+          <span className="cases-count-label">{counterLabel}</span>
+          <span className="cases-count-week">{weekLabel}</span>
         </div>
 
         <div className="search-box">
@@ -110,12 +115,6 @@ export function Header({
             onChange={e => onSearchChange(e.target.value)}
           />
         </div>
-
-        {viewMode === 'table' && (
-          <button className="icon-btn" onClick={() => window.print()} title="In / Xuất PDF">
-            <Printer size={16} />
-          </button>
-        )}
 
         <button className="icon-btn" onClick={() => onViewModeChange(viewMode === 'board' ? 'table' : 'board')} title={viewMode === 'board' ? 'Chế độ bảng' : 'Chế độ thẻ'}>
           {viewMode === 'board' ? <List size={16} /> : <LayoutDashboard size={16} />}
@@ -193,12 +192,13 @@ export function Header({
           <RefreshCw size={16} style={{ animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none' }} />
         </button>
 
-        <button className="icon-btn" onClick={onOpenHistory} title="Kho lưu trữ dự kiến mổ">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-history"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
-        </button>
-
-        <button className="icon-btn" onClick={onOpenCalendar} title="Lịch tuần">
-          <CalendarDays size={16} />
+        <button
+          className={`icon-btn header-more-btn ${mobileMenuOpen ? 'header-more-btn--open' : ''}`}
+          type="button"
+          onClick={() => setMobileMenuOpen(open => !open)}
+          title="Thao tác khác"
+        >
+          <MoreHorizontal size={16} />
         </button>
 
         {isUnlocked && (
@@ -207,6 +207,22 @@ export function Header({
             Thêm dự kiến
           </button>
         )}
+
+        <div className={`header-secondary-actions ${mobileMenuOpen ? 'header-secondary-actions--open' : ''}`}>
+          {viewMode === 'table' && (
+            <button className="icon-btn" onClick={() => { setMobileMenuOpen(false); window.print(); }} title="In / Xuất PDF">
+              <Printer size={16} />
+            </button>
+          )}
+
+          <button className="icon-btn" onClick={() => { setMobileMenuOpen(false); onOpenHistory?.(); }} title="Kho lưu trữ dự kiến mổ">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-history"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+          </button>
+
+          <button className="icon-btn" onClick={() => { setMobileMenuOpen(false); onOpenCalendar?.(); }} title="Lịch tuần">
+            <CalendarDays size={16} />
+          </button>
+        </div>
       </div>
     </header>
   );

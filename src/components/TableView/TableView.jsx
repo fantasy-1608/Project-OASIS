@@ -1,6 +1,6 @@
 
 import { useMemo } from 'react';
-import { evaluateSurgeryReadiness } from '../../lib/readiness';
+import { evaluateSurgeryReadiness, formatReadinessMissingText } from '../../lib/readiness';
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '---';
@@ -85,17 +85,27 @@ export function TableView({ boardState }) {
 
   if (allTasks.length === 0) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+      <div className="table-empty-state">
         Không có dự kiến mổ nào trong ngày.
       </div>
     );
   }
 
   return (
-    <div className="table-view-container" style={{ flex: 1, overflowY: 'auto', padding: '16px', background: 'var(--bg-primary)' }}>
-      <div className="glass-panel" style={{ padding: '1px', overflowX: 'auto' }}>
+    <div className="table-view-container">
+      <div className="table-screen-toolbar">
+        <div>
+          <div className="table-screen-title">Danh sách mổ trong ngày</div>
+          <div className="table-screen-subtitle">{sortedTasks.length} ca đã xếp sáng/chiều</div>
+        </div>
+        <button type="button" className="btn-secondary table-print-btn" onClick={() => window.print()}>
+          In / Xuất PDF
+        </button>
+      </div>
+
+      <div className="glass-panel table-screen-panel print-page">
         <div className="print-title">DANH SÁCH MỔ KHOA NGOẠI TK-CTCH</div>
-        <table className="print-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+        <table className="print-table">
           <thead>
             <tr style={{ background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--border-subtle)' }}>
               <th className="col-date" style={{ padding: '12px 16px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>Ngày mổ</th>
@@ -114,7 +124,10 @@ export function TableView({ boardState }) {
               const isMorning = task.shift === 'morning';
               const shiftLabel = isMorning ? 'Sáng' : 'Chiều';
               const readiness = evaluateSurgeryReadiness(task);
-              const completedIds = new Set(readiness.completedItems.map(item => item.id));
+              const missingText = readiness.status === 'missing'
+                ? formatReadinessMissingText(readiness, 4)
+                : '';
+              const completedText = `${readiness.completedRequired}/${readiness.totalRequired}`;
               
               return (
                 <tr key={task.id} style={{ background: 'var(--bg-card)' }}>
@@ -182,21 +195,17 @@ export function TableView({ boardState }) {
                   {/* Hồ sơ trước mổ */}
                   <td className="col-readiness" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
                     <div className={`print-readiness print-readiness--${readiness.status}`}>
-                      <div className="print-readiness-status">{readiness.label}</div>
-                      <div className="print-readiness-grid">
-                        {readiness.requiredItems.map(item => {
-                          const completed = completedIds.has(item.id);
-                          return (
-                            <span
-                              key={item.id}
-                              className={`print-readiness-chip ${completed ? 'print-readiness-chip--done' : ''}`}
-                            >
-                              <span className="print-readiness-box">{completed ? '☑' : '☐'}</span>
-                              {item.shortLabel}
-                            </span>
-                          );
-                        })}
+                      <div className="print-readiness-top">
+                        <span className="print-readiness-status">{readiness.label}</span>
+                        <span className="print-readiness-count">{completedText}</span>
                       </div>
+                      {missingText ? (
+                        <div className="print-readiness-missing">Thiếu: {missingText}</div>
+                      ) : (
+                        <div className="print-readiness-missing print-readiness-missing--muted">
+                          {readiness.status === 'ready' ? 'Đã kiểm đủ hồ sơ trước mổ' : 'Chưa có dữ liệu kiểm hồ sơ'}
+                        </div>
+                      )}
                     </div>
                   </td>
 

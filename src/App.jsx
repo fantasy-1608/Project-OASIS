@@ -15,7 +15,7 @@ import { PasscodeModal } from './components/Modal/PasscodeModal';
 import { isEnabled } from './lib/featureFlags';
 import { clearEditSession, hasValidEditSession, verifyEditPasscode } from './lib/editSession';
 import { evaluateSurgeryReadiness, formatReadinessMissingText } from './lib/readiness';
-import { format } from 'date-fns';
+import { endOfWeek, format, isWithinInterval, startOfWeek } from 'date-fns';
 import './index.css';
 
 let toastIdCounter = 0;
@@ -32,6 +32,43 @@ function buildScheduleConfirmMessage(baseMessage, surgery, targetShift) {
     : `\n\nHồ sơ: ${readiness.label}\n\nVẫn xếp dự kiến?`;
 
   return `${baseMessage}${readinessText}`;
+}
+
+function buildWeekOverview(surgeries, currentDate, dateStr) {
+  const active = surgeries.filter(s => !['completed', 'postponed', 'cancelled'].includes(s.status));
+  const weekRange = {
+    start: startOfWeek(currentDate, { weekStartsOn: 1 }),
+    end: endOfWeek(currentDate, { weekStartsOn: 1 }),
+  };
+
+  const scheduledThisWeek = active.filter((s) => {
+    if (!s.date) return false;
+    const surgeryDate = new Date(`${s.date}T00:00:00`);
+    return isWithinInterval(surgeryDate, weekRange);
+  });
+
+  const currentDayCases = active.filter(s => s.date === dateStr && s.shift !== 'waiting').length;
+  const byDate = new Map();
+  scheduledThisWeek.forEach((s) => {
+    if (!s.date || s.date === dateStr || s.shift === 'waiting') return;
+    byDate.set(s.date, (byDate.get(s.date) || 0) + 1);
+  });
+
+  const targetEntry = Array.from(byDate.entries())
+    .sort(([dateA], [dateB]) => {
+      const futureA = dateA >= dateStr ? 0 : 1;
+      const futureB = dateB >= dateStr ? 0 : 1;
+      if (futureA !== futureB) return futureA - futureB;
+      return dateA.localeCompare(dateB);
+    })[0];
+
+  return {
+    currentDayCases,
+    weekCases: scheduledThisWeek.length,
+    nextActiveDate: targetEntry
+      ? { date: targetEntry[0], count: targetEntry[1] }
+      : null,
+  };
 }
 
 function App() {
@@ -97,6 +134,11 @@ function App() {
     loading, isOnline, connectionError,
     addSurgery, updateSurgery, deleteSurgery, moveSurgery, refresh,
   } = useSurgeries(dateStr);
+
+  const weekOverview = useMemo(
+    () => buildWeekOverview(surgeries, currentDate, dateStr),
+    [surgeries, currentDate, dateStr]
+  );
   // ---- Toast system ----
   const showToast = useCallback((type, message, duration = 3500) => {
     const id = ++toastIdCounter;
@@ -613,6 +655,20 @@ function App() {
     };
   }, [boardState, searchQuery, surgeries]);
 
+  const visibleDayCases = (filteredBoardState.columns.morning?.taskIds || []).length
+    + (filteredBoardState.columns.afternoon?.taskIds || []).length;
+
+  const emptyDayHint = !searchQuery.trim()
+    && visibleDayCases === 0
+    && weekOverview.nextActiveDate
+    ? {
+      count: weekOverview.nextActiveDate.count,
+      date: weekOverview.nextActiveDate.date,
+      label: format(new Date(`${weekOverview.nextActiveDate.date}T00:00:00`), 'dd/MM'),
+      onJump: () => setCurrentDate(new Date(`${weekOverview.nextActiveDate.date}T00:00:00`)),
+    }
+    : null;
+
   return (
     <div className={`app-root ${isDraggingGlobal ? 'is-dragging' : ''}`}>
       {/* Header */}
@@ -623,6 +679,8 @@ function App() {
         onAddNew={isUnlockedEffective ? () => handleOpenAdd() : null}
         onRefresh={refresh}
         totalCases={Object.keys(boardState.tasks).length}
+        currentDayCases={weekOverview.currentDayCases}
+        weekCases={weekOverview.weekCases}
         onOpenCalendar={() => setCalendarOpen(true)}
         onOpenHistory={() => setShowHistory(true)}
         isUnlocked={isUnlockedEffective}
@@ -689,6 +747,7 @@ function App() {
                 onSchedule={handleSchedule}
                 onMarkStatus={handleMarkStatus}
                 isUnlocked={isUnlockedEffective}
+                emptyDayHint={emptyDayHint}
               />
             )}
           </DragDropContext>
