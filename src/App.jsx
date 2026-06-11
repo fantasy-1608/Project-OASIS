@@ -89,7 +89,6 @@ function App() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('board'); // 'board' | 'table'
-  const particleIntervalRef = useRef(null);
 
   const dateStr = format(currentDate, 'yyyy-MM-dd');
 
@@ -205,28 +204,6 @@ function App() {
       }
     };
   }, [showToast, triggerPasscodeLock]);
-
-
-
-  // ---- Sand particles background ----
-  useEffect(() => {
-    const createParticle = () => {
-      const p = document.createElement('div');
-      p.className = 'sand-particle';
-      const size = Math.random() * 3 + 1.5;
-      p.style.width = `${size}px`;
-      p.style.height = `${size}px`;
-      const colors = ['#d4a25a', '#c4883c', '#a18764', '#e8bc6a', '#f5d89a'];
-      const colorIndex = Math.floor(Math.random() * colors.length);
-      p.style.backgroundColor = colors.at(colorIndex);
-      p.style.left = `${Math.random() * 100}vw`;
-      p.style.animationDuration = `${Math.random() * 14 + 8}s`;
-      document.body.appendChild(p);
-      setTimeout(() => p.remove(), 22000);
-    };
-    particleIntervalRef.current = setInterval(createParticle, 800);
-    return () => clearInterval(particleIntervalRef.current);
-  }, []);
 
   // --- Handlers ---
   const handleToggleLock = () => {

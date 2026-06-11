@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { MOCK_SURGERIES, buildInitialBoardState } from '../lib/mockData';
 import { packExtras, unpackExtras } from '../lib/surgeryExtras';
 import { getEditToken } from '../lib/editSession';
+
+const READ_TIMEOUT_MS = 15000;
 
 // Các cột được xác nhận tồn tại trên Supabase
 const KNOWN_DB_COLUMNS = [
@@ -19,6 +21,15 @@ function stripUnknownColumns(obj) {
     if (KNOWN_DB_COLUMNS.includes(key)) clean[key] = obj[key];
   }
   return clean;
+}
+
+function withTimeout(promise, ms, message) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), ms);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
 }
 
 async function invokeSurgeryWrite(action, payload) {
@@ -41,11 +52,15 @@ async function invokeSurgeryWrite(action, payload) {
 }
 
 async function invokeSurgeryRead() {
-  const { data, error } = await supabase.functions.invoke('oasis-surgery-api', {
-    body: {
-      action: 'read_surgeries',
-    },
-  });
+  const { data, error } = await withTimeout(
+    supabase.functions.invoke('oasis-surgery-api', {
+      body: {
+        action: 'read_surgeries',
+      },
+    }),
+    READ_TIMEOUT_MS,
+    'Quá thời gian tải dữ liệu từ Supabase. Vui lòng thử tải lại.'
+  );
 
   if (error) return { error };
   if (data?.error) return { error: new Error(data.error) };
@@ -57,29 +72,39 @@ export function useSurgeries(date) {
   const [loading, setLoading] = useState(true);
   const [connectionError, setConnectionError] = useState(null);
   const [isOnline] = useState(isSupabaseConfigured);
+  const hasLoadedRef = useRef(false);
 
   // ---- FETCH ----
   const fetchSurgeries = useCallback(async () => {
+    const isInitialLoad = !hasLoadedRef.current;
+
     if (!isSupabaseConfigured) {
       setSurgeries(MOCK_SURGERIES);
       setLoading(false);
+      hasLoadedRef.current = true;
       return;
     }
+
     try {
-      setLoading(true);
+      if (isInitialLoad) setLoading(true);
       setConnectionError(null);
       const { data, error } = await invokeSurgeryRead();
       if (!error) {
         setSurgeries((data || []).map(d => unpackExtras(d)));
+        hasLoadedRef.current = true;
         return;
       }
 
       throw error;
     } catch (error) {
-      setConnectionError(error);
-      setSurgeries([]);
+      if (isInitialLoad) {
+        setConnectionError(error);
+        setSurgeries([]);
+      } else {
+        console.warn('[useSurgeries] Background refresh failed:', error);
+      }
     } finally {
-      setLoading(false);
+      if (isInitialLoad) setLoading(false);
     }
   }, []);
 
