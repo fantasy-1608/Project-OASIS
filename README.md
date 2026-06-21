@@ -1,4 +1,4 @@
-# Project OASIS — Bảng dự kiến mổ nội bộ (v1.1.5)
+# Project OASIS — Bảng dự kiến mổ nội bộ (v1.2.5)
 
 > Ứng dụng xếp dự kiến mổ realtime cho khoa Ngoại — Powered by Aladinn 🧞
 

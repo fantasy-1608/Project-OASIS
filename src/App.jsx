@@ -133,7 +133,7 @@ function App() {
     surgeries, boardState,
     loading, isOnline, connectionError,
     addSurgery, updateSurgery, deleteSurgery, moveSurgery, refresh,
-  } = useSurgeries(dateStr);
+  } = useSurgeries(dateStr, isUnlockedEffective);
 
   const weekOverview = useMemo(
     () => buildWeekOverview(surgeries, currentDate, dateStr),
@@ -697,7 +697,21 @@ function App() {
 
       {/* Main Board */}
       <div className="app-body">
-        {loading ? (
+        {isOnline && !isUnlockedEffective ? (
+          <div className="locked-screen glass-panel">
+            <div className="locked-screen__icon" aria-hidden="true">🔒</div>
+            <div className="error-title">Dữ liệu dự kiến mổ đang được bảo vệ</div>
+            <div className="error-text">
+              Nhập mã bảo mật để xem và chỉnh sửa thông tin bệnh nhân.
+            </div>
+            <button
+              className="btn-primary"
+              onClick={() => triggerPasscodeLock('để xem bảng dự kiến mổ', () => {})}
+            >
+              Mở khóa dữ liệu
+            </button>
+          </div>
+        ) : loading ? (
           <div className="board-layout board-layout--skeleton" style={{ padding: '10px' }}>
             <div className="waiting-panel glass-panel" style={{ opacity: 0.6 }}>
               <div className="waiting-header"><div className="skeleton-title"></div></div>

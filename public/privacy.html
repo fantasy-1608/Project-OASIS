@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Chính sách quyền riêng tư của tiện ích Aladinn OASIS" />
+    <title>Chính sách quyền riêng tư — Aladinn OASIS</title>
+    <style>
+      :root { color-scheme: light; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      body { margin: 0; background: #f1f5f9; color: #1e293b; line-height: 1.65; }
+      main { width: min(760px, calc(100% - 32px)); margin: 32px auto; padding: 32px; background: #fff; border: 1px solid #cbd5e1; border-radius: 16px; box-sizing: border-box; }
+      h1 { margin-top: 0; color: #005b9f; font-size: clamp(1.75rem, 4vw, 2.4rem); line-height: 1.2; }
+      h2 { margin-top: 2rem; color: #0f172a; font-size: 1.2rem; }
+      a { color: #0066b3; }
+      .updated { color: #64748b; }
+      @media (max-width: 560px) { main { margin: 0; width: 100%; padding: 24px 18px; border: 0; border-radius: 0; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Chính sách quyền riêng tư — Aladinn OASIS</h1>
+      <p class="updated"><strong>Cập nhật lần cuối:</strong> 21/06/2026</p>
+      <p>Aladinn OASIS là tiện ích nội bộ hỗ trợ nhân viên y tế chuyển thông tin cần thiết từ VNPT HIS sang bảng dự kiến mổ.</p>
+
+      <h2>Dữ liệu được xử lý</h2>
+      <p>Khi người dùng chủ động chọn “Lên dự kiến mổ”, tiện ích có thể đọc họ tên, mã bệnh án, giới tính, năm sinh, ngày nhập viện, buồng/phòng, chẩn đoán, bệnh kèm theo và thông tin kiểm tra mức độ sẵn sàng trước mổ đang hiển thị trong VNPT HIS. Tiện ích cũng xử lý dữ liệu lịch mổ do người dùng bổ sung, mã bảo mật và token phiên mở khóa.</p>
+      <p>Tiện ích không thu thập lịch sử duyệt web ngoài miền VNPT HIS đã khai báo, không sử dụng quảng cáo và không có hệ thống phân tích hành vi.</p>
+
+      <h2>Mục đích sử dụng</h2>
+      <p>Dữ liệu chỉ được dùng để điền trước biểu mẫu, hiển thị và quản lý bảng dự kiến mổ, đánh giá danh mục hồ sơ tiền phẫu và bảo vệ quyền xem/chỉnh sửa.</p>
+
+      <h2>Lưu trữ và truyền dữ liệu</h2>
+      <ul>
+        <li>Dữ liệu được truyền tới Supabase bằng HTTPS/WSS sau hành động rõ ràng của người dùng.</li>
+        <li>Các trường PHI được mã hóa tại backend trước khi lưu trong cơ sở dữ liệu.</li>
+        <li><code>chrome.storage.local</code> chỉ giữ tạm payload đang chờ chuyển sang side panel và xóa sau khi nhận.</li>
+        <li>Token mở khóa nằm trong <code>sessionStorage</code>, hết hạn sau tối đa 8 giờ và bị xóa khi khóa lại hoặc kết thúc phiên.</li>
+        <li>Dữ liệu lịch mổ được giữ tới khi người dùng có quyền xóa hoặc đơn vị vận hành áp dụng chính sách lưu trữ riêng.</li>
+      </ul>
+
+      <h2>Chia sẻ dữ liệu</h2>
+      <p>Aladinn OASIS không bán dữ liệu, không dùng dữ liệu cho quảng cáo, chấm điểm tín dụng hoặc mục đích ngoài chức năng lập dự kiến mổ. Supabase chỉ cung cấp hạ tầng cho chức năng cốt lõi.</p>
+
+      <h2>Kiểm soát và xóa dữ liệu</h2>
+      <p>Người dùng có quyền phù hợp có thể sửa hoặc xóa ca dự kiến mổ trong ứng dụng. Gỡ tiện ích sẽ xóa dữ liệu lưu cục bộ. Yêu cầu về dữ liệu backend có thể gửi qua trang hỗ trợ.</p>
+
+      <h2>Bảo mật</h2>
+      <p>Tiện ích giới hạn quyền vào miền VNPT HIS và Supabase đã khai báo. Dữ liệu nhạy cảm được truyền qua kết nối mã hóa; thao tác đọc/ghi backend yêu cầu phiên mở khóa hợp lệ hoặc tài khoản đã xác thực.</p>
+
+      <h2>Thay đổi chính sách</h2>
+      <p>Chính sách sẽ được cập nhật khi phạm vi dữ liệu hoặc cách sử dụng thay đổi. Ngày cập nhật mới nhất luôn được ghi ở đầu trang.</p>
+
+      <h2>Liên hệ</h2>
+      <p><a href="https://github.com/fantasy-1608/Project-OASIS/issues">Trang hỗ trợ và yêu cầu quyền riêng tư</a></p>
+    </main>
+  </body>
+</html>

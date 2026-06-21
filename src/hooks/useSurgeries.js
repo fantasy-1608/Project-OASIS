@@ -52,10 +52,12 @@ async function invokeSurgeryWrite(action, payload) {
 }
 
 async function invokeSurgeryRead() {
+  const editToken = getEditToken();
   const { data, error } = await withTimeout(
     supabase.functions.invoke('oasis-surgery-api', {
       body: {
         action: 'read_surgeries',
+        editToken,
       },
     }),
     READ_TIMEOUT_MS,
@@ -67,7 +69,7 @@ async function invokeSurgeryRead() {
   return { data: data?.data || [], error: null };
 }
 
-export function useSurgeries(date) {
+export function useSurgeries(date, accessGranted = false) {
   const [surgeries, setSurgeries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [connectionError, setConnectionError] = useState(null);
@@ -82,6 +84,14 @@ export function useSurgeries(date) {
       setSurgeries(MOCK_SURGERIES);
       setLoading(false);
       hasLoadedRef.current = true;
+      return;
+    }
+
+    if (!accessGranted) {
+      setSurgeries([]);
+      setConnectionError(null);
+      setLoading(false);
+      hasLoadedRef.current = false;
       return;
     }
 
@@ -106,7 +116,7 @@ export function useSurgeries(date) {
     } finally {
       if (isInitialLoad) setLoading(false);
     }
-  }, []);
+  }, [accessGranted]);
 
   useEffect(() => {
     let isMounted = true;
@@ -118,13 +128,13 @@ export function useSurgeries(date) {
 
   // ---- REALTIME ----
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured || !accessGranted) return;
     const channel = supabase
       .channel('surgeries-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'surgeries' }, fetchSurgeries)
       .subscribe();
     return () => supabase.removeChannel(channel);
-  }, [fetchSurgeries]);
+  }, [accessGranted, fetchSurgeries]);
 
   const addSurgery = useCallback(async (surgery) => {
     const newSurgery = {

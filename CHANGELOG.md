@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.2.5] - 2026-06-21
+
+### Security
+- Yêu cầu phiên mở khóa hợp lệ trước khi Edge Function trả dữ liệu dự kiến mổ đã giải mã.
+- Giữ nguyên luồng mã bảo mật CTCH, nhưng bảo vệ cả quyền xem lẫn quyền chỉnh sửa dữ liệu bệnh nhân.
+- Thu hẹp Content Security Policy của extension và loại bỏ tải font từ xa.
+
+### Chrome Web Store
+- Chuẩn hóa icon extension, privacy policy, tài sản listing và quy trình đóng gói/kiểm tra gói phát hành.
+- Đồng bộ metadata phiên bản và mô tả tiếng Việt cho bản phát hành.
+
 ## [1.2.2] - 2026-05-22
 
 ### Added

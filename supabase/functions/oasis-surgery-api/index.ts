@@ -40,6 +40,12 @@ function json(body, status = 200) {
   });
 }
 
+function authorizationError(message = 'Unauthorized.') {
+  const error = new Error(message);
+  error.status = 401;
+  return error;
+}
+
 function getSecretKey() {
   const legacy = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   if (legacy) return legacy;
@@ -154,23 +160,39 @@ async function verifyEditToken(supabase, token) {
   const secret = await getEditTokenSecret(supabase);
   if (!secret) throw new Error('Edit token signing secret is not configured.');
   if (!token || typeof token !== 'string' || !token.includes('.')) {
-    throw new Error('Missing edit session token.');
+    throw authorizationError('Missing edit session token.');
   }
 
   const [payloadPart, signature] = token.split('.');
   const expected = await hmac(payloadPart, secret);
   if (!timingSafeEqual(signature, expected)) {
-    throw new Error('Invalid edit session token.');
+    throw authorizationError('Invalid edit session token.');
   }
 
   const payload = JSON.parse(base64UrlDecodeText(payloadPart));
   if (payload.sub !== 'shared-edit-passcode' || !payload.exp) {
-    throw new Error('Invalid edit session payload.');
+    throw authorizationError('Invalid edit session payload.');
   }
   if (Math.floor(Date.now() / 1000) >= payload.exp) {
-    throw new Error('Edit session expired.');
+    throw authorizationError('Edit session expired.');
   }
   return payload;
+}
+
+async function verifyReadAccess(req, supabase, body) {
+  if (body.editToken) {
+    await verifyEditToken(supabase, body.editToken);
+    return;
+  }
+
+  const authorization = req.headers.get('Authorization') || '';
+  const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+  if (token) {
+    const { data, error } = await supabase.auth.getUser(token);
+    if (!error && data?.user) return;
+  }
+
+  throw authorizationError('Vui lòng mở khóa để xem dữ liệu dự kiến mổ.');
 }
 
 async function sha256Hex(text) {
@@ -446,7 +468,10 @@ Deno.serve(async (req) => {
 
     const supabase = getAdminClient();
 
-    if (action === 'read_surgeries') return await handleRead(supabase, body);
+    if (action === 'read_surgeries') {
+      await verifyReadAccess(req, supabase, body);
+      return await handleRead(supabase, body);
+    }
 
     await verifyEditToken(supabase, body.editToken);
 

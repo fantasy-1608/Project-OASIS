@@ -57,11 +57,11 @@ loadDotEnv();
 
 const passcode = process.env.OASIS_TEST_PASSCODE || 'CTCH';
 
-const readResult = await invoke('read_surgeries');
-if (!Array.isArray(readResult.data)) {
-  throw new Error('read_surgeries did not return an array.');
+const anonymousRead = await tryInvoke('read_surgeries');
+if (!anonymousRead.error || !anonymousRead.error.message.includes('(401)')) {
+  throw new Error('read_surgeries must reject anonymous access with HTTP 401.');
 }
-console.log(`read_surgeries ok: ${readResult.data.length} rows`);
+console.log('anonymous read blocked: HTTP 401');
 
 const verifyAttempt = await tryInvoke('verify_passcode', { passcode });
 if (verifyAttempt.error) {
@@ -74,3 +74,9 @@ if (!verifyResult.token || !verifyResult.expiresAt) {
   throw new Error('verify_passcode did not return an edit token.');
 }
 console.log(`verify_passcode ok: expiresAt=${verifyResult.expiresAt}`);
+
+const readResult = await invoke('read_surgeries', { editToken: verifyResult.token });
+if (!Array.isArray(readResult.data)) {
+  throw new Error('authenticated read_surgeries did not return an array.');
+}
+console.log(`authenticated read_surgeries ok: ${readResult.data.length} rows`);

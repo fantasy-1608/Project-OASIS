@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Aladinn OASIS",
   "short_name": "OASIS",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "Bảng dự kiến mổ nội bộ — Aladinn OASIS",
   "icons": {
     "16": "icon16.png",
@@ -23,7 +23,7 @@
     "https://*.supabase.co/*"
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src https://*.supabase.co wss://*.supabase.co"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src https://*.supabase.co wss://*.supabase.co"
   },
   "background": {
     "service_worker": "sw.js"

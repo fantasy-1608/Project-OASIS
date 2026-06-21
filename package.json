@@ -1,14 +1,15 @@
 {
   "name": "project-oasis",
   "private": true,
-  "version": "1.2.4",
+  "version": "1.2.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "release": "pnpm build && cd dist && zip -r ../project-oasis-v$npm_package_version.zip ./*",
+    "verify:extension": "node scripts/verify_extension.mjs",
+    "release": "pnpm build && pnpm verify:extension && node scripts/package_extension.mjs",
     "smoke:supabase": "node scripts/smoke_oasis_edge.mjs"
   },
   "dependencies": {
